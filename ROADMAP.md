@@ -46,10 +46,10 @@ fixed. Highest priority because they affect users today.
 
 Visible improvements players will notice. Each is contained.
 
-7. **Favourites system.** [M]
-   *Why:* Players want to mark go-to appearances and pin them to the
-   top of the list. Store `WardrobeDB.chars[key].favourites = {entry=true}`,
-   sort favourites first, show a star icon.
+7. ~~**Favourites system.**~~ ✅ Done in v1.13. Per-character
+   `WardrobeDB.chars[key].favourites = {[entry]=true}`, gold `*`
+   widget on the leftmost edge of each row, sort comparator bubbles
+   favourites to the top above quality and name sorts.
 8. **Hide-already-applied toggle.** [M]
    *Why:* Once you've used an item, seeing it in the list every visit
    is noise. Checkbox to filter it out. Reads `newItem->transmog` from
@@ -198,8 +198,7 @@ deeper work:
 1. ~~**Day 1** — items 1, 2, 4, 5, 19~~ ✅ shipped as v1.11.
 2. ~~**Day 2** — item 3 (debounce) + item 14 (confirmation popup) +
    item 13 (Apply Preview in bottom bar)~~ ✅ shipped as v1.12.
-3. **Day 3** — item 7 (favourites) — its own session because the
-   storage + sort + visual indicator touch a few places
+3. ~~**Day 3** — item 7 (favourites)~~ ✅ shipped as v1.13.
 4. **Day 4** — items 8 (hide-already-applied) + 10 (search clear)
 5. ~~**Day 5** — item 33 (build script) so future releases stop being
    manual~~ ✅ shipped (build_release.py at repo root).
@@ -211,9 +210,9 @@ panel, localization) can be picked up individually.
 
 ## Status
 
-**Shipped so far (9 items):**
+**Shipped so far (10 items):**
 - Tier 1 — Hardening: #1, #2, #3, #4, #5
-- Tier 2 — Quality-of-life: #13, #14
+- Tier 2 — Quality-of-life: #7, #13, #14
 - Tier 3 — UI polish: #19
 - Tier 5 — Architecture: #33
 

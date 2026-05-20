@@ -1,5 +1,32 @@
 # Wardrobe — changelog
 
+## [1.13] - 2026-05-20
+
+Day 3 of the ROADMAP polish sprint.
+
+### Added
+- **Favourites system** (roadmap item #7). Click the gold `*` on
+  the left of any item row to mark it as a favourite. Favourited
+  items bubble to the top of their slot's list (above quality and
+  alphabetical sorts), so your go-to appearances are always one
+  click away.
+  - **Storage**: per-character in
+    `WardrobeDB.chars[Name-Realm].favourites = {[entry]=true}`.
+    Works for both numeric item entries and string enchant entries
+    transparently (Lua table keys handle both).
+  - **Visual**: rows show a `*` glyph at the leftmost position —
+    dim grey when not favourited, gold when favourited. Hover
+    brightens it to a lighter gold so it reads as clickable.
+  - **Backfill**: existing saves get an empty `favourites` table
+    added on next login, no `/wb reset` needed.
+
+### Internal
+- Row layout: existing icon and name field shifted right by 16px
+  to make room for the star widget at the LEFT edge. Total row
+  width unchanged.
+- Sort comparator extended: favourites first, then quality desc,
+  then name asc.
+
 ## [1.12] - 2026-05-20
 
 Day 2 of the ROADMAP polish sprint.

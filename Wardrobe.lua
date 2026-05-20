@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.12
+-- Wardrobe  v1.13
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.12"
+local ADDON_VERSION = "1.13"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -155,11 +155,13 @@ local function GetCharDB()
             collection  = {},   -- [slotId] = { {entry, name, icon, quality, link}, ... }
             outfits     = {},   -- array of { name, slots = {[slotId]=entry} }
             serverSets  = {},   -- array of { name }, scanned from server-side Manage sets
+            favourites  = {},   -- [entry] = true. Numeric entries for items, string entries for enchants.
         }
     end
-    -- Backfill for chars saved before outfits/serverSets existed.
+    -- Backfill for chars saved before outfits / serverSets / favourites existed.
     if not db.chars[key].outfits    then db.chars[key].outfits    = {} end
     if not db.chars[key].serverSets then db.chars[key].serverSets = {} end
+    if not db.chars[key].favourites then db.chars[key].favourites = {} end
     return db.chars[key]
 end
 
@@ -1652,9 +1654,41 @@ local function CreateMainFrame()
             GameTooltip:Hide()
         end)
 
+        -- Star widget on the left edge. Left-click toggles the favourite
+        -- flag for this row's entry; left-click on the rest of the row
+        -- previews the item. A child Button on a Button parent — clicks
+        -- to the star are consumed by the star (don't trigger preview),
+        -- right-clicks on the star fall through to the row (apply).
+        local star = CreateFrame("Button", nil, row)
+        star:SetSize(14, 22)
+        star:SetPoint("LEFT", row, "LEFT", 4, 0)
+        star:RegisterForClicks("LeftButtonUp")
+        local starFs = star:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
+        starFs:SetAllPoints()
+        starFs:SetJustifyH("CENTER")
+        starFs:SetText("*")
+        starFs:SetTextColor(0.35, 0.35, 0.40)
+        star.fs = starFs
+        star:SetScript("OnClick", function(self)
+            if row.itemData then ui.ToggleFavourite(row.itemData.entry) end
+        end)
+        star:SetScript("OnEnter", function(self)
+            self.fs:SetTextColor(1, 0.95, 0.5)
+        end)
+        star:SetScript("OnLeave", function(self)
+            -- Restore based on actual favourite state
+            local isFav = row.itemData and GetCharDB().favourites[row.itemData.entry]
+            if isFav then
+                self.fs:SetTextColor(1, 0.85, 0.30)
+            else
+                self.fs:SetTextColor(0.35, 0.35, 0.40)
+            end
+        end)
+        row.star = star
+
         local icon = row:CreateTexture(nil, "ARTWORK")
         icon:SetSize(18, 18)
-        icon:SetPoint("LEFT", 4, 0)
+        icon:SetPoint("LEFT", 20, 0)   -- shifted right to clear the star widget
         row.icon = icon
 
         local qualFs = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
@@ -2137,7 +2171,15 @@ function ui.RefreshList()
             table.insert(filtered, it)
         end
     end
+    -- Sort key: favourites bubble to the top, then highest quality first,
+    -- then name A-Z. The favourite flag is a per-character marker stored in
+    -- char.favourites keyed by entry ID (number for items, string for
+    -- enchants — Lua tables index both transparently).
+    local favs = char.favourites or {}
     table.sort(filtered, function(a, b)
+        local af = favs[a.entry] and 1 or 0
+        local bf = favs[b.entry] and 1 or 0
+        if af ~= bf then return af > bf end
         if (a.quality or 1) ~= (b.quality or 1) then return (a.quality or 1) > (b.quality or 1) end
         return (a.name or "") < (b.name or "")
     end)
@@ -2181,6 +2223,12 @@ function ui.RefreshList()
                 row.nameFs:SetTextColor(c[1], c[2], c[3])
                 row.qualFs:SetText(QUALITY_NAME[it.quality or 1] or "")
                 row.qualFs:SetTextColor(c[1]*0.8, c[2]*0.8, c[3]*0.8)
+            end
+            -- Star: gold when favourited, dim grey otherwise.
+            if favs[it.entry] then
+                row.star.fs:SetTextColor(1, 0.85, 0.30)
+            else
+                row.star.fs:SetTextColor(0.35, 0.35, 0.40)
             end
             row.itemData = it
             row:Show()
@@ -2308,6 +2356,22 @@ function ui.PreviewItem(slotId, itemData)
     previewSlots[slotId] = itemData.entry
     ui.RefreshDoll()
     ui.UpdatePreviewLabel()
+end
+
+-- Toggle the favourite flag for an item/enchant entry. Favourites are
+-- per-character (each alt has its own go-to looks) and persist in the
+-- SavedVariables. Triggers a list refresh so the row re-sorts and the
+-- star colour updates.
+function ui.ToggleFavourite(entry)
+    if entry == nil then return end
+    local char = GetCharDB()
+    char.favourites = char.favourites or {}
+    if char.favourites[entry] then
+        char.favourites[entry] = nil
+    else
+        char.favourites[entry] = true
+    end
+    ui.RefreshList()
 end
 
 function ui.RebuildOutfitMenu()
