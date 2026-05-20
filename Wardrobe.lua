@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.9
+-- Wardrobe  v1.10
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.9"
+local ADDON_VERSION = "1.10"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -1026,11 +1026,14 @@ end
 -------------------------------------------------------------------------------
 -- SERVER SETS — drive the Manage Sets gossip menu for Use/Save/Delete
 --
--- Use:    free re-apply of a previously-saved set (Rochet2 charges nothing
---         per-Use; the cost was paid at Save time).
--- Save:   costs gold based on currently-pending transmogs. Uses gossip
+-- Use:    re-apply a previously-saved set's items to your equipped slots.
+--         The Ebonhold/Valanior fork charges per-transmog fees on each
+--         apply (NOT the "paid at Save time, free thereafter" model that
+--         Rochet2 vanilla advertised — only the addon's doll preview is
+--         truly free).
+-- Save:   costs gold based on currently-applied transmogs. Uses gossip
 --         text input via SelectGossipOption(idx, code).
--- Delete: free removal of a saved set.
+-- Delete: removes a saved set; no gold cost.
 --
 -- Each operation walks a chain of gossip menus. We bypass the server's
 -- built-in confirmation popups (binding warnings, cost confirms) because
@@ -1851,7 +1854,7 @@ local function CreateMainFrame()
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText("Server-side sets")
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Click a set name to re-apply it for |cff00ff00free|r — the server only charges when you Save a set, not when you Use it.", 1, 1, 1, true)
+        GameTooltip:AddLine("Click a set name to re-apply it to your equipped slots. The server still charges the per-transmog fee on apply — only the paper-doll preview is free.", 1, 1, 1, true)
         GameTooltip:Show()
     end)
     serverSetsBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
@@ -1864,7 +1867,7 @@ local function CreateMainFrame()
         GameTooltip:SetOwner(self, "ANCHOR_TOP")
         GameTooltip:SetText("Save current transmogs as a server set")
         GameTooltip:AddLine(" ")
-        GameTooltip:AddLine("Captures your currently-applied transmogs into a named server set you can re-Use later for free.", 1, 1, 1, true)
+        GameTooltip:AddLine("Captures your currently-applied transmogs into a named server set you can re-Use later. Stored server-side so it survives reinstalls.", 1, 1, 1, true)
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("|cffff8c40Costs gold|r based on the set contents (server-side fee). The cost is taken when you click Save in the popup.", 0.9, 0.7, 0.4, true)
         GameTooltip:Show()

@@ -7,9 +7,9 @@ customised fork of Rochet2's transmog module).
 The server's native UI is a paginated gossip menu — click a slot, scroll
 ten pages of helms, remember a name, do it again for shoulders, repeat.
 Wardrobe replaces it with a real interface: searchable per-slot lists, a
-rotatable 3D paper-doll preview, outfit save/load, and direct integration
-with the server's Manage Sets feature so you don't pay every time you
-change your look.
+rotatable 3D paper-doll preview so you can try outfits before committing
+gold to apply them, outfit save/load, and direct integration with the
+server's Manage Sets feature.
 
 ![Wardrobe screenshot placeholder]
 
@@ -30,9 +30,10 @@ change your look.
   trips with hide markers too.
 - **Server Sets integration.** The addon scans your server-side Manage
   Sets at the end of every normal scan and lets you Use / Save / Delete
-  them from the same panel — Use is **free** (the server only charges
-  on Save), so once you've stored a few looks you can swap them without
-  paying the per-transmog fee each time.
+  them from the same panel. Sets are stored server-side so they persist
+  across reinstalls and SavedVariables wipes. (Note: applying a set still
+  costs the standard per-transmog fee on Ebonhold/Valanior — only the
+  paper-doll preview is free.)
 - **Enchant illusion slots** (Main hand enchant, Off hand enchant) are
   surfaced as additional pseudo-slots and follow the same flow.
 - **Hide slot** stages a "Hide item" preview rather than firing
@@ -94,8 +95,8 @@ reuses the cache (rescan every 30 minutes automatically, or
 - **Reset Preview** — clears all staged changes and re-syncs the doll
 - **Save as Outfit** — stores the current preview under a name (addon
   storage, free)
-- **Save Server Set** — costs gold per the server's fee; lets you
-  re-Use it for free later
+- **Save Server Set** — costs gold per the server's fee; the saved set
+  lives server-side so it survives reinstalls
 - **Hide _Slot_** — stages a hide for the active slot (committed by
   Apply Preview)
 - **Apply All (Save Pending)** — commits any server-side pending

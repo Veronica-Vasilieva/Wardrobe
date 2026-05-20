@@ -1,5 +1,20 @@
 # Wardrobe — changelog
 
+## [1.10] - 2026-05-20
+
+### Fixed
+- **Corrected the "Server Sets are free to Use" misconception throughout
+  the addon.** The Ebonhold/Valanior fork still charges the per-transmog
+  fee every time a set is applied — only the paper-doll preview is
+  truly free. Earlier docs/tooltips wrongly implied the Rochet2 vanilla
+  model (paid at Save, free thereafter) was in effect. Updated:
+  - README intro and Features list
+  - "Save Server Set" tooltip
+  - "Server Sets ▼" dropdown tooltip
+  - SERVER SETS section code comments
+- v0.11 and v1.0 CHANGELOG entries are left unchanged for historical
+  accuracy (they reflect what was believed at the time).
+
 ## [1.9] - 2026-05-20
 
 ### Fixed
