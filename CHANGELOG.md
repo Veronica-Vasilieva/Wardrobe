@@ -1,5 +1,26 @@
 # Wardrobe — changelog
 
+## [1.5] - 2026-05-20
+
+### Fixed
+- **Background image didn't show up.** Two combined issues:
+  - WoW 3.3.5a's texture loader rejected the v1.4 1024×680 TGA
+    because the height wasn't a power of two. Regenerated at
+    **1024×512** PoT with scale-to-cover (matches the frame's
+    ~1.47:1 aspect closely with only a modest top/bottom crop).
+  - Even if the texture had loaded, the column backdrops
+    (`listBg`, `dollBg`, bottom bar) had alpha 0.85, blocking
+    the art behind them. Dropped those alphas to 0.55 so the
+    image shows through while the foreground content stays
+    readable.
+- Background texture now also uses the explicit `.tga` extension
+  in `SetTexture` (some 3.3.5a clients are picky about
+  extension-less paths for addon-installed files) and renders at
+  BACKGROUND sublevel 7 to guarantee it sits above the frame's
+  bgFile fill.
+- Vertex colour set to `(1,1,1,1)` (was `0.65`-dimmed) since the
+  child backdrops now do the dimming work instead.
+
 ## [1.4] - 2026-05-20
 
 ### Added

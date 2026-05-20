@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.4
+-- Wardrobe  v1.5
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.4"
+local ADDON_VERSION = "1.5"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -1315,16 +1315,19 @@ local function CreateMainFrame()
     f:SetBackdropBorderColor(0.40, 0.25, 0.70)
 
     -- Custom background texture (purple/gold transmog scene). Rendered on
-    -- the BACKGROUND layer so child frames (tabs, doll, list, buttons) sit
-    -- on top. Anchored just inside the border so the dark backdrop forms
-    -- a visible edge frame. If the texture file is missing, the dark
-    -- backdrop above is the fallback and the window still renders cleanly.
-    local bgTex = f:CreateTexture(nil, "BACKGROUND")
+    -- the BACKGROUND layer at sublevel 7 so it sits above the main frame's
+    -- bgFile fill. Child frame backdrops have been dimmed to ~0.5 alpha so
+    -- this image shows through the columns. If the texture file is missing,
+    -- the dark backdrop above is the fallback and the window still renders.
+    --
+    -- Path includes the explicit ".tga" extension because WoW 3.3.5a's
+    -- texture loader is occasionally picky about extension-less paths for
+    -- addon-installed files.
+    local bgTex = f:CreateTexture(nil, "BACKGROUND", nil, 7)
     bgTex:SetPoint("TOPLEFT",     f, "TOPLEFT",      5,  -5)
     bgTex:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -5,   5)
-    bgTex:SetTexture("Interface\\AddOns\\Wardrobe\\Media\\Background")
-    -- Dim slightly so foreground text and buttons stay readable
-    bgTex:SetVertexColor(0.65, 0.65, 0.70, 1)
+    bgTex:SetTexture("Interface\\AddOns\\Wardrobe\\Media\\Background.tga")
+    bgTex:SetVertexColor(1, 1, 1, 1)
     ui.bgTex = bgTex
 
     -- Title bar
@@ -1521,7 +1524,7 @@ local function CreateMainFrame()
     listBg:SetPoint("TOPLEFT", 4, -32)
     listBg:SetPoint("BOTTOMRIGHT", -4, 4)
     MakeBackdrop(listBg, "Interface\\ChatFrame\\ChatFrameBackground")
-    listBg:SetBackdropColor(0.05, 0.04, 0.08, 0.85)
+    listBg:SetBackdropColor(0.05, 0.04, 0.08, 0.55)
     listBg:SetBackdropBorderColor(0.3, 0.25, 0.4)
 
     local scroll = CreateFrame("ScrollFrame", "WardrobeListScroll", listBg, "FauxScrollFrameTemplate")
@@ -1608,7 +1611,7 @@ local function CreateMainFrame()
     dollBg:SetPoint("TOPRIGHT", 0, 0)
     dollBg:SetHeight(380)
     MakeBackdrop(dollBg, "Interface\\ChatFrame\\ChatFrameBackground")
-    dollBg:SetBackdropColor(0.05, 0.04, 0.08, 0.85)
+    dollBg:SetBackdropColor(0.05, 0.04, 0.08, 0.55)
     dollBg:SetBackdropBorderColor(0.3, 0.25, 0.4)
 
     local doll = CreateFrame("DressUpModel", "WardrobeDoll", dollBg)
@@ -1831,7 +1834,7 @@ local function CreateMainFrame()
     bar:SetPoint("BOTTOMRIGHT", -10, 10)
     bar:SetHeight(44)
     MakeBackdrop(bar, "Interface\\DialogFrame\\UI-DialogBox-Background")
-    bar:SetBackdropColor(0.1, 0.08, 0.14, 0.85)
+    bar:SetBackdropColor(0.1, 0.08, 0.14, 0.55)
     bar:SetBackdropBorderColor(0.4, 0.3, 0.55)
 
     local applyAll = MakeBtn("Apply All (Save Pending)", 170, bar, function()
