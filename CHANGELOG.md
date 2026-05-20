@@ -1,5 +1,16 @@
 # Wardrobe — changelog
 
+## [1.4] - 2026-05-20
+
+### Added
+- **Custom background art.** Purple/gold transmog scene
+  (`Media/Background.tga`, 1024×680) rendered on the wardrobe
+  frame's BACKGROUND layer, anchored 5px inside the border so
+  the dark backdrop forms an edge frame. Vertex colour dimmed
+  to ~65% so foreground text/buttons stay readable. The
+  original dark `UI-DialogBox-Background-Dark` backdrop remains
+  underneath as a fallback in case the texture file is missing.
+
 ## [1.3] - 2026-05-20
 
 ### Fixed

@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.3
+-- Wardrobe  v1.4
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.3"
+local ADDON_VERSION = "1.4"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -1313,6 +1313,19 @@ local function CreateMainFrame()
 
     MakeBackdrop(f, "Interface\\DialogFrame\\UI-DialogBox-Background-Dark")
     f:SetBackdropBorderColor(0.40, 0.25, 0.70)
+
+    -- Custom background texture (purple/gold transmog scene). Rendered on
+    -- the BACKGROUND layer so child frames (tabs, doll, list, buttons) sit
+    -- on top. Anchored just inside the border so the dark backdrop forms
+    -- a visible edge frame. If the texture file is missing, the dark
+    -- backdrop above is the fallback and the window still renders cleanly.
+    local bgTex = f:CreateTexture(nil, "BACKGROUND")
+    bgTex:SetPoint("TOPLEFT",     f, "TOPLEFT",      5,  -5)
+    bgTex:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -5,   5)
+    bgTex:SetTexture("Interface\\AddOns\\Wardrobe\\Media\\Background")
+    -- Dim slightly so foreground text and buttons stay readable
+    bgTex:SetVertexColor(0.65, 0.65, 0.70, 1)
+    ui.bgTex = bgTex
 
     -- Title bar
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
