@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.5
+-- Wardrobe  v1.6
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.5"
+local ADDON_VERSION = "1.6"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -108,7 +108,7 @@ local TAB_COL_WIDTH     = 150
 local DB_DEFAULTS = {
     npcNames     = { ["Warpweaver"] = true },
     chars        = {},       -- ["Name-Realm"] = { lastScan, slotMenuMap, extras, collection }
-    ui           = { qualityFilter = 0 },
+    ui           = { qualityFilter = 0, showBackground = true },
     debug        = false,
 }
 
@@ -130,6 +130,11 @@ local function GetDB()
             end
         end
     end
+    -- Backfill nested ui defaults — top-level GetDB() loop only fills if
+    -- the whole `ui` table is nil, so older saves miss new keys.
+    WardrobeDB.ui = WardrobeDB.ui or {}
+    if WardrobeDB.ui.qualityFilter  == nil then WardrobeDB.ui.qualityFilter  = 0    end
+    if WardrobeDB.ui.showBackground == nil then WardrobeDB.ui.showBackground = true end
     -- Stamp the SavedVariables with provenance metadata so the origin of a
     -- save file is identifiable even if the LICENSE/README are stripped from
     -- a redistributed copy.
@@ -1525,6 +1530,7 @@ local function CreateMainFrame()
     listBg:SetPoint("BOTTOMRIGHT", -4, 4)
     MakeBackdrop(listBg, "Interface\\ChatFrame\\ChatFrameBackground")
     listBg:SetBackdropColor(0.05, 0.04, 0.08, 0.55)
+    ui.listBgFrame = listBg
     listBg:SetBackdropBorderColor(0.3, 0.25, 0.4)
 
     local scroll = CreateFrame("ScrollFrame", "WardrobeListScroll", listBg, "FauxScrollFrameTemplate")
@@ -1609,9 +1615,12 @@ local function CreateMainFrame()
     local dollBg = CreateFrame("Frame", nil, dollCol)
     dollBg:SetPoint("TOPLEFT", 0, 0)
     dollBg:SetPoint("TOPRIGHT", 0, 0)
-    dollBg:SetHeight(380)
+    -- v1.6: shrunk from 380 to 348 to make room for the background-art
+    -- toggle checkbox at the bottom of the doll column.
+    dollBg:SetHeight(348)
     MakeBackdrop(dollBg, "Interface\\ChatFrame\\ChatFrameBackground")
     dollBg:SetBackdropColor(0.05, 0.04, 0.08, 0.55)
+    ui.dollBgFrame = dollBg
     dollBg:SetBackdropBorderColor(0.3, 0.25, 0.4)
 
     local doll = CreateFrame("DressUpModel", "WardrobeDoll", dollBg)
@@ -1828,6 +1837,31 @@ local function CreateMainFrame()
     serverDelBtn:SetPoint("TOPRIGHT", serverSetsBtn, "BOTTOMRIGHT", 0, -4)
     ui.serverDelBtn = serverDelBtn
 
+    -- Background-art toggle. Saved in db.ui.showBackground. When on, the
+    -- custom artwork shows behind the wardrobe and the column backdrops
+    -- run at 0.55 alpha (translucent) so the art is visible through them.
+    -- When off, the artwork is hidden and the column backdrops go back to
+    -- 0.85 alpha so the original solid look returns.
+    local bgChk = CreateFrame("CheckButton", "WardrobeBgChk", dollCol, "UICheckButtonTemplate")
+    bgChk:SetSize(22, 22)
+    bgChk:SetPoint("TOP", serverDelBtn, "BOTTOM", 0, -6)
+    -- The standard template auto-creates a "<name>Text" FontString.
+    _G["WardrobeBgChkText"]:SetText("Background art")
+    _G["WardrobeBgChkText"]:SetFontObject("GameFontNormalSmall")
+    bgChk:SetScript("OnClick", function(self)
+        GetDB().ui.showBackground = self:GetChecked() and true or false
+        if ui.ApplyBackgroundPref then ui.ApplyBackgroundPref() end
+    end)
+    bgChk:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Background art")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("When checked, the custom transmog scene shows behind the wardrobe and the columns turn translucent so it shows through. When unchecked, the original opaque dark backdrop is restored.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    bgChk:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    ui.bgChk = bgChk
+
     -- ===== Bottom action bar =====
     local bar = CreateFrame("Frame", nil, f)
     bar:SetPoint("BOTTOMLEFT", 10, 10)
@@ -1835,6 +1869,7 @@ local function CreateMainFrame()
     bar:SetHeight(44)
     MakeBackdrop(bar, "Interface\\DialogFrame\\UI-DialogBox-Background")
     bar:SetBackdropColor(0.1, 0.08, 0.14, 0.55)
+    ui.barFrame = bar
     bar:SetBackdropBorderColor(0.4, 0.3, 0.55)
 
     local applyAll = MakeBtn("Apply All (Save Pending)", 170, bar, function()
@@ -2040,6 +2075,21 @@ function ui.UpdateHideButton()
     else
         ui.hideBtn:Enable()
     end
+end
+
+-- Apply the background-art preference: show/hide the wallpaper texture and
+-- swap the column backdrops between translucent (so the art shows through)
+-- and opaque (the original look from before the artwork existed).
+function ui.ApplyBackgroundPref()
+    local on = GetDB().ui.showBackground
+    if ui.bgTex then
+        if on then ui.bgTex:Show() else ui.bgTex:Hide() end
+    end
+    local alpha = on and 0.55 or 0.85
+    if ui.listBgFrame then ui.listBgFrame:SetBackdropColor(0.05, 0.04, 0.08, alpha) end
+    if ui.dollBgFrame then ui.dollBgFrame:SetBackdropColor(0.05, 0.04, 0.08, alpha) end
+    if ui.barFrame    then ui.barFrame:SetBackdropColor   (0.10, 0.08, 0.14, alpha) end
+    if ui.bgChk       then ui.bgChk:SetChecked(on) end
 end
 
 -------------------------------------------------------------------------------
@@ -2369,6 +2419,7 @@ function ShowWardrobeUI()
     ui.RefreshTabs()
     ui.UpdateHideButton()
     ui.UpdatePreviewLabel()
+    ui.ApplyBackgroundPref()
     ui.RefreshDoll()
     ui.RefreshList()
     -- Pre-warm any unresolved item cache entries — without this, items the

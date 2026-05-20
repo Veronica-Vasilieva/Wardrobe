@@ -1,5 +1,25 @@
 # Wardrobe — changelog
 
+## [1.6] - 2026-05-20
+
+### Added
+- **Background-art toggle.** Labeled "Background art" checkbox at
+  the bottom of the doll column lets you switch between the
+  custom wallpaper (translucent columns) and the original opaque
+  dark backdrop. Saved per-character in
+  `WardrobeDB.ui.showBackground` (default on).
+- `ui.ApplyBackgroundPref()` centralises the visual swap —
+  shows/hides the texture and flips the three column backdrop
+  alphas between 0.55 (wallpaper visible through columns) and
+  0.85 (opaque, no-wallpaper look).
+
+### Changed
+- Doll model height trimmed from 380px to 348px to make room for
+  the toggle. Doll is still large enough for clear preview and
+  full rotation/zoom interaction.
+- `GetDB` now backfills nested `ui.*` defaults so the new
+  `showBackground` flag is added to older saves without a wipe.
+
 ## [1.5] - 2026-05-20
 
 ### Fixed
