@@ -175,9 +175,13 @@ Wardrobe: v1.10 by Veronica-Vasilieva loaded. Talk to a Warpweaver to begin.
 ### 7. Try it out
 
 Find any **Warpweaver** transmog NPC and right-click them. The Wardrobe
-window will open in place of the usual gossip menu after a 1–3 second
-scan of your collection. Hover the `?` badge in the top-right corner of
-the wardrobe for a quick reference of every control and command.
+window will open in place of the usual gossip menu after an initial scan
+of your collection. For a new install the scan can take **20–30 seconds**
+if you have a large appearance collection (the addon has to walk every
+slot's paginated submenu in the background); thereafter the cache is
+reused and the wardrobe opens instantly on subsequent visits. Hover the
+`?` badge in the top-right corner of the wardrobe for a quick reference
+of every control and command.
 
 ### Troubleshooting
 
