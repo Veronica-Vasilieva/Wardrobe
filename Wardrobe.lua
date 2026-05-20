@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.8
+-- Wardrobe  v1.9
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.8"
+local ADDON_VERSION = "1.9"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -198,19 +198,53 @@ local function StripFormatting(text)
     return text
 end
 
--- Returns (entry, name) for a gossip option that wraps an item OR an enchant
--- illusion hyperlink. Enchant illusion slots on the customized server may
--- emit |Henchant:N|h..|h instead of |Hitem:N:|h..|h; we try both. Anything
--- else returns nil so callers know it's a nav/action option, not an entry.
-local function ParseItemOption(text)
+-- Returns (entry, name, icon) for a gossip option.
+--
+-- Regular slots use |Hitem:N:...|h[Name]|h (sometimes |Henchant:N|h..|h).
+-- Enchant slots on the Sunwell/Valanior fork emit "|Ticon|t<EnchantName>"
+-- with NO hyperlink at all — confirmed via
+-- github.com/coolzoom/sunwellcore-world2024 Transmogifier.cpp line 247:
+--
+--   AddGossipItemFor(player, ..., ("|TInterface/ICONS/INV_Enchant_FormulaGood_01:30:30:-18:0|t" + name).c_str(), base+page, enchantentry);
+--
+-- We don't get the enchantentry over the API, but the gossip option index
+-- is enough to drive an apply. Use the enchant name as a synthetic string
+-- entry ID. Caller passes isEnchant=true when scanning an enchant slot
+-- submenu; in that mode we accept plain-text non-nav options as enchants.
+local function ParseItemOption(text, isEnchant)
     if not text then return nil end
     local entry = text:match("|Hitem:(%d+):")
-    if not entry then
-        entry = text:match("|Henchant:(%d+)")
+    if entry then
+        local name = text:match("|h%[(.-)%]|h") or "?"
+        return tonumber(entry), name
     end
-    if not entry then return nil end
-    local name = text:match("|h%[(.-)%]|h") or "?"
-    return tonumber(entry), name
+    entry = text:match("|Henchant:(%d+)")
+    if entry then
+        local name = text:match("|h%[(.-)%]|h") or "?"
+        return tonumber(entry), name
+    end
+    if isEnchant then
+        local plain = StripFormatting(text)
+        if plain == "" then return nil end
+        local lc = plain:lower()
+        -- Reject the navigation/action options the enchant submenu emits.
+        -- Patterns are anchored where possible so a legitimate enchant
+        -- name (e.g. "Restoration") doesn't false-match.
+        if lc:find("^next page", 1) or lc:find("^previous page", 1)
+           or lc:find("^show main menu", 1)
+           or lc:find("^restore original", 1)
+           or lc:find("^hide ", 1) or lc == "hide enchant" or lc == "hide item"
+           or lc:find("^remove pending", 1)
+           or lc:find("^how transmog", 1) or lc:find("^how sets", 1)
+           or lc:find("%-%s*page%s*%d+/%d+%s*$") then
+            return nil
+        end
+        -- Extract icon path from the |Ticon:...|t prefix so the row gets a
+        -- proper texture. Fallback to a generic enchant icon if absent.
+        local iconPath = text:match("|T([^:|]+)")
+        return plain, plain, iconPath or "Interface\\Icons\\INV_Enchant_FormulaGood_01"
+    end
+    return nil
 end
 
 local function MatchesSlotLabel(text, label)
@@ -388,19 +422,33 @@ local function CaptureSlotItems(slotId, isFirstPage, opts)
     local seen        = scanState.seenEntries
     opts = opts or ReadGossipOptions()
     local newOnPage   = 0
+    local isEnchant   = IsEnchantSlot(slotId)
     for _, opt in ipairs(opts) do
-        local entry, name = ParseItemOption(opt.text)
+        local entry, name, enchIcon = ParseItemOption(opt.text, isEnchant)
         if entry and not seen[entry] then
             seen[entry] = true
-            local _, link, quality, _, _, _, _, _, _, icon = GetItemInfo(entry)
-            table.insert(items, {
-                entry    = entry,
-                name     = name,
-                link     = link,
-                quality  = quality or 1,
-                icon     = icon or "Interface\\Icons\\INV_Misc_QuestionMark",
-                resolved = (link ~= nil),
-            })
+            if isEnchant then
+                -- Enchants have no item ID; the entry IS the name. No
+                -- GetItemInfo lookup needed (and it wouldn't work anyway).
+                table.insert(items, {
+                    entry    = entry,   -- string: enchant name
+                    name     = name,
+                    link     = nil,
+                    quality  = 1,
+                    icon     = enchIcon,
+                    resolved = true,
+                })
+            else
+                local _, link, quality, _, _, _, _, _, _, icon = GetItemInfo(entry)
+                table.insert(items, {
+                    entry    = entry,
+                    name     = name,
+                    link     = link,
+                    quality  = quality or 1,
+                    icon     = icon or "Interface\\Icons\\INV_Misc_QuestionMark",
+                    resolved = (link ~= nil),
+                })
+            end
             newOnPage = newOnPage + 1
         end
     end
@@ -799,12 +847,13 @@ local function StartSlotAction(slotId, findTarget, label)
 end
 
 local function ApplyEntry(slotId, entry)
+    local isEnchant = IsEnchantSlot(slotId)
     StartSlotAction(slotId, function(opts)
         for _, opt in ipairs(opts) do
-            local e = ParseItemOption(opt.text)
+            local e = ParseItemOption(opt.text, isEnchant)
             if e == entry then return opt.index end
         end
-    end, "apply " .. entry)
+    end, "apply " .. tostring(entry))
 end
 
 -- "Hide item" lives on page 1 of each slot's submenu — page-1 only, so the

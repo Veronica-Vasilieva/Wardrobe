@@ -1,5 +1,32 @@
 # Wardrobe — changelog
 
+## [1.9] - 2026-05-20
+
+### Fixed
+- **Enchant slots populate.** Cause confirmed by reading the
+  Sunwell/Valanior server source
+  ([Transmogifier.cpp line 247](https://github.com/coolzoom/sunwellcore-world2024/blob/main/src/server/game/Custom/Transmogification/Transmogifier.cpp)):
+  enchant options are emitted as `"|Ticon|t<EnchantName>"` with no
+  hyperlink — neither `|Hitem:` nor `|Henchant:`. The previous parser
+  returned nil for every enchant row.
+- `ParseItemOption` now takes an `isEnchant` flag. In enchant mode it
+  treats any non-navigation plain-text option as an enchant, using the
+  name itself as a synthetic string entry ID. The icon path is pulled
+  from the `|T...|t` prefix so each row renders with the actual server
+  icon (defaults to `INV_Enchant_FormulaGood_01` if missing).
+- `CaptureSlotItems` detects enchant slots via `IsEnchantSlot(slotId)`
+  and stores `resolved = true` so the cache-warming scanner and lazy
+  GetItemInfo refresh skip them (neither would work for non-items
+  anyway).
+- `ApplyEntry` captures the enchant flag in its `findTarget` closure
+  so the entry comparison stays consistent between scan-time and
+  apply-time parses.
+
+### Notes
+- Apply by enchant works because we drive the gossip option by *index*
+  — we never needed the server-side `enchantentry`. Name equality
+  between scan and apply parses is enough.
+
 ## [1.8] - 2026-05-20
 
 ### Fixed
