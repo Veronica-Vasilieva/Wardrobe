@@ -43,6 +43,9 @@ REPO       = "Veronica-Vasilieva/Wardrobe"
 # release zip or be synced into the git repo clone.
 EXCLUDED = {
     "dist", ".git", ".gitignore", "__pycache__", "build_release.py",
+    # README screenshots and other repo-only docs assets — kept in git but
+    # not shipped to players (they only need files that load in-game).
+    "docs",
 }
 
 

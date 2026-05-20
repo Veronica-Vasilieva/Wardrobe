@@ -11,7 +11,7 @@ rotatable 3D paper-doll preview so you can try outfits before committing
 gold to apply them, outfit save/load, and direct integration with the
 server's Manage Sets feature.
 
-![Wardrobe screenshot placeholder]
+![Wardrobe in-game screenshot](docs/Wardrobe.png)
 
 ## Features
 
