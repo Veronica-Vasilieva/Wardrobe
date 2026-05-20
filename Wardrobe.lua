@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.6
+-- Wardrobe  v1.7
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.6"
+local ADDON_VERSION = "1.7"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -1990,6 +1990,17 @@ function ui.RefreshTabs()
 end
 
 function ui.RefreshList()
+    -- Re-entry guard. FauxScrollFrame_Update internally calls
+    -- SetMinMaxValues, which auto-clamps the scrollbar value and fires
+    -- OnVerticalScroll -> FauxScrollFrame_OnVerticalScroll, which then
+    -- calls ui.RefreshList again as its update function. Without this
+    -- guard the recursive call competes with the outer call's row
+    -- rendering and the list can end up showing nothing (was the root
+    -- cause of "search past 2 letters shows no items" — same bug also
+    -- hit slot switches in v1.2 before the offset clamp papered over it).
+    if ui._refreshing then return end
+    ui._refreshing = true
+
     local char  = GetCharDB()
     local items = (char.collection[ui.currentSlot] or {})
     local filter = (ui.search:GetText() or ""):lower()
@@ -2062,6 +2073,8 @@ function ui.RefreshList()
     else
         ui.stamp:SetText(base)
     end
+
+    ui._refreshing = false
 end
 
 function ui.UpdateHideButton()

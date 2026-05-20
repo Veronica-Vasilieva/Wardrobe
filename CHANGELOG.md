@@ -1,5 +1,25 @@
 # Wardrobe — changelog
 
+## [1.7] - 2026-05-20
+
+### Fixed
+- **Search past 2 letters showed no items.** The same scroll-offset
+  drift bug v1.2 papered over had a deeper root cause: when
+  `FauxScrollFrame_Update` resets the scrollbar via
+  `SetMinMaxValues(0, 0)`, the auto-clamp fires `OnVerticalScroll`,
+  which calls `ui.RefreshList` **recursively** (because that's set
+  as the scroll's update function). The recursive call competed
+  with the outer call's row rendering, and on narrowing searches
+  the outer call would Hide every row after the recursive call had
+  shown them — net result: empty list.
+- Added a `ui._refreshing` re-entry guard so the recursive call
+  no-ops cleanly. Outer call's row rendering is now the source of
+  truth.
+
+### Notes
+- The v1.2 offset clamp is kept as belt-and-braces; it still helps
+  if anything else ever ends up out of sync.
+
 ## [1.6] - 2026-05-20
 
 ### Added
