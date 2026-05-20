@@ -20,27 +20,23 @@ Every item has a one-line **Why** so it's clear what problem it solves.
 These address bugs or rough edges we've already noticed but haven't
 fixed. Highest priority because they affect users today.
 
-1. **Verify HIDE + enchant slot interaction.** [S]
-   *Why:* Staging HIDE on Main hand enchant probably tries to click a
-   "Hide item" option that doesn't exist (the enchant submenu has
-   "Hide enchant" instead). Test, and if broken, make `HideSlot` look
-   for either variant.
-2. **Surface action errors more visibly.** [S]
-   *Why:* "Open the Warpweaver first" lands in chat where it gets lost.
-   Use `UIErrorsFrame:AddMessage` (the red top-of-screen banner) for
-   user-facing failures.
-3. **Debounce search-box typing.** [M]
-   *Why:* Every keystroke runs a full `RefreshList`. Fast typists do 5+
-   pointless rebuilds. Add a 100 ms debounce so we only refresh after
-   typing pauses.
-4. **Tab badges for staged slots.** [S]
-   *Why:* Easy to forget which slots you've staged a preview on. Show
-   a small gold dot or `[*]` on the tab's count column when
-   `previewSlots[slotId]` is set.
-5. **Persistent search across slot switches.** [S]
-   *Why:* If you're hunting "Crusader" across multiple weapon slots,
-   the search clears every time. Remember the last query (don't save
-   to disk — session-local is enough).
+1. ~~**Verify HIDE + enchant slot interaction.**~~ ✅ Done in v1.11.
+   `HideSlot`'s `^hide ` regex already caught both "Hide item" and
+   "Hide enchant"; only needed to re-enable the button for enchant
+   slots and propagate `isEnchant` into `ParseItemOption`.
+2. ~~**Surface action errors more visibly.**~~ ✅ Done in v1.11.
+   New `ErrorMsg` helper routes precondition messages to
+   `UIErrorsFrame:AddMessage` (red banner) plus chat fallback.
+3. ~~**Debounce search-box typing.**~~ ✅ Done in v1.12. New 100 ms
+   debounce frame between `OnTextChanged` and `RefreshList` — each
+   keystroke resets the timer; refresh fires once typing pauses.
+4. ~~**Tab badges for staged slots.**~~ ✅ Done in v1.11. Slot tabs
+   now show a gold `* N` when a preview is staged for that slot;
+   `UpdatePreviewLabel` also calls `RefreshTabs` so badges sync
+   instantly.
+5. ~~**Persistent search across slot switches.**~~ ✅ Verified in
+   v1.11. Already worked — `EditBox` retains its text across tab
+   clicks and `RefreshList` reads `GetText()` on every run.
 6. **Throttle apply chain to slow servers.** [M]
    *Why:* `SCAN_STEP_DELAY = 0.10` works on local servers but high-
    latency servers may drop clicks. Detect timeout patterns and back
@@ -72,12 +68,14 @@ Visible improvements players will notice. Each is contained.
 12. **Keyboard navigation.** [M]
     *Why:* Tab to cycle slot tabs, Up/Down to move within the list,
     Enter to preview. Useful for power users.
-13. **Bottom-bar Apply Preview shortcut.** [S]
-    *Why:* Right now Apply Preview is in the doll column. Mirror it in
-    the bottom bar so you don't have to look across the window.
-14. **Confirmation popup before "Restore Original".** [S]
-    *Why:* It's a destructive global action; one accidental click and
-    every slot reverts. Add a Yes/No confirmation.
+13. ~~**Bottom-bar Apply Preview shortcut.**~~ ✅ Done in v1.12. New
+    Apply Preview button at the far left of the bottom bar, mirroring
+    the doll-column one. Renamed "Apply All (Save Pending)" to just
+    "Save Pending" to free up the room.
+14. ~~**Confirmation popup before "Restore Original".**~~ ✅ Done in
+    v1.12. New `WARDROBE_CONFIRM_RESTORE_ORIGINAL` StaticPopup with a
+    Yes/No prompt and an orange-tinted warning about per-slot gold to
+    re-apply.
 
 ## Tier 3 — UI polish
 
@@ -96,9 +94,9 @@ Cosmetic but raises the perceived quality.
 18. **Quality filter as proper dropdown.** [M]
     *Why:* The cycle button is awkward. Use a real dropdown with all
     levels visible at once.
-19. **Better enchant row display.** [S]
-    *Why:* Enchant rows show "Common" in the quality column because
-    enchants have no quality. Show "Enchant" or leave it blank.
+19. ~~**Better enchant row display.**~~ ✅ Done in v1.11. Quality
+    column shows "Enchant" in a gold tint instead of "Common", and
+    the row name also adopts the gold tint for visual consistency.
 20. **Item-level filter slider.** [M]
     *Why:* Old players want to find low-iLvl vanity gear, raiders want
     current-tier looks. Slider above the list (e.g., 80–284).
@@ -197,19 +195,27 @@ If you want a concrete plan for the next few sessions, this is the
 order I'd recommend, picking from each tier to mix quick wins with
 deeper work:
 
-1. **Day 1** — items 1, 2, 4, 5, 19 (T1/T3 quick polish bundle, ~2 h total)
-2. **Day 2** — item 3 (debounce) + item 14 (confirmation popup) +
-   item 13 (Apply Preview in bottom bar)
+1. ~~**Day 1** — items 1, 2, 4, 5, 19~~ ✅ shipped as v1.11.
+2. ~~**Day 2** — item 3 (debounce) + item 14 (confirmation popup) +
+   item 13 (Apply Preview in bottom bar)~~ ✅ shipped as v1.12.
 3. **Day 3** — item 7 (favourites) — its own session because the
    storage + sort + visual indicator touch a few places
 4. **Day 4** — items 8 (hide-already-applied) + 10 (search clear)
-5. **Day 5** — item 33 (build script) so future releases stop being
-   manual
+5. ~~**Day 5** — item 33 (build script) so future releases stop being
+   manual~~ ✅ shipped (build_release.py at repo root).
 6. **Day 6** — item 24 (minimap button)
 7. **Day 7** — item 11 (right-click context menu)
 
 After that the bigger items (compare mode, outfit sharing, settings
 panel, localization) can be picked up individually.
+
+## Status
+
+**Shipped so far (9 items):**
+- Tier 1 — Hardening: #1, #2, #3, #4, #5
+- Tier 2 — Quality-of-life: #13, #14
+- Tier 3 — UI polish: #19
+- Tier 5 — Architecture: #33
 
 ---
 
