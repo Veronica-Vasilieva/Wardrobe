@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.13
+-- Wardrobe  v1.14
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.13"
+local ADDON_VERSION = "1.14"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -108,7 +108,7 @@ local TAB_COL_WIDTH     = 150
 local DB_DEFAULTS = {
     npcNames     = { ["Warpweaver"] = true },
     chars        = {},       -- ["Name-Realm"] = { lastScan, slotMenuMap, extras, collection }
-    ui           = { qualityFilter = 0, showBackground = true },
+    ui           = { qualityFilter = 0, showBackground = true, hideApplied = false },
     debug        = false,
 }
 
@@ -133,8 +133,9 @@ local function GetDB()
     -- Backfill nested ui defaults — top-level GetDB() loop only fills if
     -- the whole `ui` table is nil, so older saves miss new keys.
     WardrobeDB.ui = WardrobeDB.ui or {}
-    if WardrobeDB.ui.qualityFilter  == nil then WardrobeDB.ui.qualityFilter  = 0    end
-    if WardrobeDB.ui.showBackground == nil then WardrobeDB.ui.showBackground = true end
+    if WardrobeDB.ui.qualityFilter  == nil then WardrobeDB.ui.qualityFilter  = 0     end
+    if WardrobeDB.ui.showBackground == nil then WardrobeDB.ui.showBackground = true  end
+    if WardrobeDB.ui.hideApplied    == nil then WardrobeDB.ui.hideApplied    = false end
     -- Stamp the SavedVariables with provenance metadata so the origin of a
     -- save file is identifiable even if the LICENSE/README are stripped from
     -- a redistributed copy.
@@ -156,12 +157,14 @@ local function GetCharDB()
             outfits     = {},   -- array of { name, slots = {[slotId]=entry} }
             serverSets  = {},   -- array of { name }, scanned from server-side Manage sets
             favourites  = {},   -- [entry] = true. Numeric entries for items, string entries for enchants.
+            applied     = {},   -- [slotId] = entry currently applied via Wardrobe. Used by the "Hide applied" filter.
         }
     end
-    -- Backfill for chars saved before outfits / serverSets / favourites existed.
+    -- Backfill for chars saved before each field was added.
     if not db.chars[key].outfits    then db.chars[key].outfits    = {} end
     if not db.chars[key].serverSets then db.chars[key].serverSets = {} end
     if not db.chars[key].favourites then db.chars[key].favourites = {} end
+    if not db.chars[key].applied    then db.chars[key].applied    = {} end
     return db.chars[key]
 end
 
@@ -923,6 +926,18 @@ local function OnGossipShowDuringApply()
     elseif applyState.phase == "confirming_item" then
         -- Server reopened a menu after applying/hiding. Could be the slot
         -- submenu or back at main. Detect which.
+        --
+        -- We arrived here AFTER clicking the item option (or Hide option),
+        -- which means the server has accepted the change. Record it in
+        -- char.applied so the "Hide applied items" filter knows. Skip HIDE
+        -- entries because they're not items the user "wore" — they're slot
+        -- removals.
+        if applyState.slotId and applyState.entry
+           and applyState.entry ~= "HIDE" then
+            local char = GetCharDB()
+            char.applied = char.applied or {}
+            char.applied[applyState.slotId] = applyState.entry
+        end
         if IsMainMenu(opts) then
             ResetApply()
             ShowWardrobeUI()
@@ -1569,6 +1584,35 @@ local function CreateMainFrame()
     search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
     ui.search = search
 
+    -- Small "X" clear button inside the search box's right edge. Visible
+    -- only when the search has text, so it doesn't add visual noise when
+    -- the box is empty.
+    local clearBtn = CreateFrame("Button", nil, search)
+    clearBtn:SetSize(16, 16)
+    clearBtn:SetPoint("RIGHT", search, "RIGHT", -4, 0)
+    clearBtn:SetFrameLevel(search:GetFrameLevel() + 2)
+    local clearFs = clearBtn:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    clearFs:SetAllPoints()
+    clearFs:SetJustifyH("CENTER")
+    clearFs:SetText("X")
+    clearFs:SetTextColor(0.6, 0.6, 0.6)
+    clearBtn.fs = clearFs
+    clearBtn:SetScript("OnEnter", function(self) self.fs:SetTextColor(1, 0.4, 0.4) end)
+    clearBtn:SetScript("OnLeave", function(self) self.fs:SetTextColor(0.6, 0.6, 0.6) end)
+    clearBtn:SetScript("OnClick", function()
+        search:SetText("")
+        search:ClearFocus()
+        -- SetText("") fires OnTextChanged which triggers the debounce,
+        -- which calls RefreshList ~100ms later. That's fine — the change
+        -- is small and the slight delay is unnoticeable for a clear.
+    end)
+    clearBtn:Hide()
+    -- Hook OnTextChanged to show/hide based on whether there's text.
+    search:HookScript("OnTextChanged", function(self)
+        if self:GetText() ~= "" then clearBtn:Show() else clearBtn:Hide() end
+    end)
+    ui.searchClear = clearBtn
+
     local searchLabel = right:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     searchLabel:SetPoint("BOTTOMLEFT", search, "TOPLEFT", -2, 2)
     searchLabel:SetText("Search")
@@ -1978,6 +2022,30 @@ local function CreateMainFrame()
     bgChk:SetScript("OnLeave", function() GameTooltip:Hide() end)
     ui.bgChk = bgChk
 
+    -- Hide-applied filter. Toggles whether the list shows items that
+    -- Wardrobe has tracked as currently applied to this slot. Tracking
+    -- starts when you install the addon — items you applied before then
+    -- (or via the native Server Menu) won't be hidden until you re-apply
+    -- through Wardrobe.
+    local appChk = CreateFrame("CheckButton", "WardrobeAppliedChk", dollCol, "UICheckButtonTemplate")
+    appChk:SetSize(22, 22)
+    appChk:SetPoint("TOPLEFT", bgChk, "BOTTOMLEFT", 0, -2)
+    _G["WardrobeAppliedChkText"]:SetText("Hide applied items")
+    _G["WardrobeAppliedChkText"]:SetFontObject("GameFontNormalSmall")
+    appChk:SetScript("OnClick", function(self)
+        GetDB().ui.hideApplied = self:GetChecked() and true or false
+        if ui.RefreshList then ui.RefreshList() end
+    end)
+    appChk:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Hide applied items")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Filters items out of the list once you've applied them, so they don't clutter future browsing. Tracking begins the moment you install Wardrobe — anything applied earlier (or via the Server Menu) won't be hidden until you re-apply via the addon.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    appChk:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    ui.appChk = appChk
+
     -- ===== Bottom action bar =====
     local bar = CreateFrame("Frame", nil, f)
     bar:SetPoint("BOTTOMLEFT", 10, 10)
@@ -2150,10 +2218,12 @@ function ui.RefreshList()
     if ui._refreshing then return end
     ui._refreshing = true
 
-    local char  = GetCharDB()
-    local items = (char.collection[ui.currentSlot] or {})
-    local filter = (ui.search:GetText() or ""):lower()
-    local qf     = GetDB().ui.qualityFilter
+    local char        = GetCharDB()
+    local items       = (char.collection[ui.currentSlot] or {})
+    local filter      = (ui.search:GetText() or ""):lower()
+    local qf          = GetDB().ui.qualityFilter
+    local hideApplied = GetDB().ui.hideApplied
+    local appliedEntry = char.applied and char.applied[ui.currentSlot]
     local filtered = {}
     for _, it in ipairs(items) do
         -- Lazy refresh: client may not have had item data cached at scan time.
@@ -2166,8 +2236,10 @@ function ui.RefreshList()
                 it.resolved = true
             end
         end
-        if (qf == 0 or (it.quality or 1) >= qf)
-           and (filter == "" or (it.name or ""):lower():find(filter, 1, true)) then
+        local passQuality = qf == 0 or (it.quality or 1) >= qf
+        local passSearch  = filter == "" or (it.name or ""):lower():find(filter, 1, true)
+        local passApplied = not (hideApplied and appliedEntry == it.entry)
+        if passQuality and passSearch and passApplied then
             table.insert(filtered, it)
         end
     end
@@ -2624,7 +2696,14 @@ StaticPopupDialogs["WARDROBE_CONFIRM_RESTORE_ORIGINAL"] = {
     timeout      = 0,
     whileDead    = true,
     hideOnEscape = true,
-    OnAccept     = function() ClickExtra("restore", "Restore original look") end,
+    OnAccept     = function()
+        -- Server is stripping all transmogs; our local "applied" tracker
+        -- needs to match or the "Hide applied" filter will lie about
+        -- what's currently in use.
+        local char = GetCharDB()
+        if char.applied then wipe(char.applied) end
+        ClickExtra("restore", "Restore original look")
+    end,
 }
 
 function ui.SelectSlot(slotId)
@@ -2643,6 +2722,8 @@ function ShowWardrobeUI()
     ui.UpdateHideButton()
     ui.UpdatePreviewLabel()
     ui.ApplyBackgroundPref()
+    -- Sync the Hide-applied checkbox to its saved state on every show.
+    if ui.appChk then ui.appChk:SetChecked(GetDB().ui.hideApplied and true or false) end
     ui.RefreshDoll()
     ui.RefreshList()
     -- Pre-warm any unresolved item cache entries — without this, items the

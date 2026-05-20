@@ -1,5 +1,37 @@
 # Wardrobe — changelog
 
+## [1.14] - 2026-05-20
+
+Day 4 of the ROADMAP polish sprint.
+
+### Added
+- **"Hide applied items" filter** (roadmap item #8). New checkbox in
+  the doll column (beneath the Background-art toggle). When ticked,
+  the list hides whichever item Wardrobe has tracked as currently
+  applied to the active slot, so it doesn't add noise on re-visits.
+  - **Tracking**: `char.applied = {[slotId] = entry}` gets updated
+    in the apply state machine when the server confirms the change
+    (the `confirming_item → walking_back` transition). HIDE
+    "applies" are skipped — they're slot removals, not items worn.
+  - **Reset**: "Restore Original" now also clears the local tracker
+    so the filter doesn't lie about which items are in use.
+  - **Limitations**: only knows about transmogs applied via
+    Wardrobe since the addon was installed. Pre-existing transmogs
+    and ones applied via the Server Menu remain visible until
+    re-applied through the addon.
+- **Search clear "X" button** (roadmap item #10). Small button on
+  the right edge of the search EditBox, visible only when there's
+  text. One click empties the search and unfocuses the box. The Esc
+  shortcut still works for keyboard users.
+
+### Internal
+- `char.applied` field added to fresh char records and backfilled
+  on older saves so existing alts get the field without a wipe.
+- `db.ui.hideApplied` added to defaults + nested ui backfill.
+- Hide-applied filter is composed with the existing quality and
+  search filters as a third `pass*` condition in `RefreshList` —
+  all three must pass for a row to appear.
+
 ## [1.13] - 2026-05-20
 
 Day 3 of the ROADMAP polish sprint.

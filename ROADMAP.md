@@ -50,18 +50,19 @@ Visible improvements players will notice. Each is contained.
    `WardrobeDB.chars[key].favourites = {[entry]=true}`, gold `*`
    widget on the leftmost edge of each row, sort comparator bubbles
    favourites to the top above quality and name sorts.
-8. **Hide-already-applied toggle.** [M]
-   *Why:* Once you've used an item, seeing it in the list every visit
-   is noise. Checkbox to filter it out. Reads `newItem->transmog` from
-   gossip submenu's current state — or just track in
-   `WardrobeDB.chars[key].applied`.
+8. ~~**Hide-already-applied toggle.**~~ ✅ Done in v1.14. Checkbox
+   below the Background-art toggle. Tracks via
+   `char.applied[slotId] = entry` updated during the apply state
+   machine. Tracking is forward-looking: pre-existing transmogs
+   and Server-Menu applies aren't known until re-applied through
+   Wardrobe.
 9. **Sort dropdown.** [M]
    *Why:* Currently fixed sort (quality desc, then name asc). Add Name
    asc, Name desc, Quality, "Recently scanned" — saved in
    `db.ui.sortOrder`.
-10. **Quick clear button on search box.** [S]
-    *Why:* `Esc` clears it but isn't discoverable. Add a small × on the
-    right edge of the editbox.
+10. ~~**Quick clear button on search box.**~~ ✅ Done in v1.14. Small
+    "X" inside the search box's right edge, visible only when the
+    box has text. Click empties the search and unfocuses.
 11. **Right-click context menu on rows.** [M]
     *Why:* Apply / Try On / Favourite / Hide from List in one place
     instead of needing to know the shift/right-click convention.
@@ -199,7 +200,8 @@ deeper work:
 2. ~~**Day 2** — item 3 (debounce) + item 14 (confirmation popup) +
    item 13 (Apply Preview in bottom bar)~~ ✅ shipped as v1.12.
 3. ~~**Day 3** — item 7 (favourites)~~ ✅ shipped as v1.13.
-4. **Day 4** — items 8 (hide-already-applied) + 10 (search clear)
+4. ~~**Day 4** — items 8 (hide-already-applied) + 10 (search clear)~~
+   ✅ shipped as v1.14.
 5. ~~**Day 5** — item 33 (build script) so future releases stop being
    manual~~ ✅ shipped (build_release.py at repo root).
 6. **Day 6** — item 24 (minimap button)
@@ -210,9 +212,9 @@ panel, localization) can be picked up individually.
 
 ## Status
 
-**Shipped so far (10 items):**
+**Shipped so far (12 items):**
 - Tier 1 — Hardening: #1, #2, #3, #4, #5
-- Tier 2 — Quality-of-life: #7, #13, #14
+- Tier 2 — Quality-of-life: #7, #8, #10, #13, #14
 - Tier 3 — UI polish: #19
 - Tier 5 — Architecture: #33
 
