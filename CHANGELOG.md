@@ -1,5 +1,14 @@
 # Wardrobe — changelog
 
+## [1.3] - 2026-05-20
+
+### Fixed
+- **Question marks on the Outfits / Server Sets buttons.** The
+  `▼` glyph isn't in WoW 3.3.5a's default font and renders as
+  `?`. Replaced all six occurrences with the ASCII `(v)` so the
+  dropdown indicator shows correctly. Per the project's known
+  unicode-restriction list.
+
 ## [1.2] - 2026-05-20
 
 ### Fixed

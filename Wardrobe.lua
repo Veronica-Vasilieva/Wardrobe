@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.2
+-- Wardrobe  v1.3
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.2"
+local ADDON_VERSION = "1.3"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -1688,7 +1688,7 @@ local function CreateMainFrame()
     local outfitBtn = CreateFrame("Button", nil, dollCol, "UIPanelButtonTemplate")
     outfitBtn:SetSize(DOLL_WIDTH, 22)
     outfitBtn:SetPoint("TOP", previewLbl, "BOTTOM", 0, -8)
-    outfitBtn:SetText("Outfits ▼")
+    outfitBtn:SetText("Outfits (v)")
     ui.outfitBtn = outfitBtn
 
     -- Outfit menu (popup list under the button)
@@ -1756,7 +1756,7 @@ local function CreateMainFrame()
     local serverSetsBtn = CreateFrame("Button", nil, dollCol, "UIPanelButtonTemplate")
     serverSetsBtn:SetSize(DOLL_WIDTH, 22)
     serverSetsBtn:SetPoint("TOPLEFT", applyPrevBtn, "BOTTOMLEFT", 0, -10)
-    serverSetsBtn:SetText("Server Sets ▼")
+    serverSetsBtn:SetText("Server Sets (v)")
     ui.serverSetsBtn = serverSetsBtn
 
     local serverSetsMenu = CreateFrame("Frame", nil, dollCol)
@@ -2187,7 +2187,7 @@ function ui.RebuildServerSetsMenu()
         local setName = set.name
         row:SetScript("OnClick", function()
             ui.selectedServerSetIdx = idx
-            if ui.serverSetsBtn then ui.serverSetsBtn:SetText("Set: " .. setName .. " ▼") end
+            if ui.serverSetsBtn then ui.serverSetsBtn:SetText("Set: " .. setName .. " (v)") end
             menu:Hide()
             StartUseServerSet(setName)
         end)
@@ -2207,7 +2207,7 @@ function ui.SelectOutfit(idx)
     end
     ui.RefreshDoll()
     ui.UpdatePreviewLabel()
-    if ui.outfitBtn then ui.outfitBtn:SetText("Outfit: " .. outfit.name .. " ▼") end
+    if ui.outfitBtn then ui.outfitBtn:SetText("Outfit: " .. outfit.name .. " (v)") end
     Print("Loaded outfit '" .. outfit.name .. "' — click Apply Preview to commit.")
 end
 
@@ -2222,7 +2222,7 @@ function ui.SaveCurrentPreviewAsOutfit(name)
     for slotId, entry in pairs(previewSlots) do outfit.slots[slotId] = entry end
     table.insert(char.outfits, outfit)
     ui.selectedOutfitIdx = #char.outfits
-    if ui.outfitBtn then ui.outfitBtn:SetText("Outfit: " .. name .. " ▼") end
+    if ui.outfitBtn then ui.outfitBtn:SetText("Outfit: " .. name .. " (v)") end
     Print("Saved outfit '" .. name .. "' (" .. n .. " slots).")
 end
 
@@ -2233,7 +2233,7 @@ function ui.DeleteSelectedOutfit()
     local name = outfits[idx].name
     table.remove(outfits, idx)
     ui.selectedOutfitIdx = nil
-    if ui.outfitBtn then ui.outfitBtn:SetText("Outfits ▼") end
+    if ui.outfitBtn then ui.outfitBtn:SetText("Outfits (v)") end
     Print("Deleted outfit '" .. name .. "'.")
 end
 
