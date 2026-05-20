@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.1
+-- Wardrobe  v1.2
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.1"
+local ADDON_VERSION = "1.2"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -1674,9 +1674,13 @@ local function CreateMainFrame()
     end)
     resetView:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    -- Tiny label below the doll showing how many slots are previewed
+    -- Tiny label below the doll showing how many slots are previewed.
+    -- Constrained to the doll column width so longer messages wrap rather
+    -- than overflowing into the right pane.
     local previewLbl = dollCol:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     previewLbl:SetPoint("TOP", dollBg, "BOTTOM", 0, -4)
+    previewLbl:SetWidth(DOLL_WIDTH)
+    previewLbl:SetJustifyH("CENTER")
     previewLbl:SetTextColor(0.85, 0.78, 0.45)
     ui.previewLbl = previewLbl
 
@@ -1962,7 +1966,17 @@ function ui.RefreshList()
     end)
 
     FauxScrollFrame_Update(ui.listScroll, #filtered, #ui.rows, 22)
-    local offset = FauxScrollFrame_GetOffset(ui.listScroll)
+    -- Clamp the offset to the new filtered range. Without this, switching
+    -- from a large slot (e.g. Head, 256 items) to a small one (Tabard, 9)
+    -- or narrowing a search leaves the scrollbar parked past the end of the
+    -- new list and every row reads past `filtered` — the list LOOKS empty
+    -- even though we have items.
+    local maxOffset = math.max(0, #filtered - #ui.rows)
+    local offset    = FauxScrollFrame_GetOffset(ui.listScroll)
+    if offset > maxOffset then
+        offset = maxOffset
+        ui.listScroll:SetVerticalScroll(maxOffset * 22)
+    end
     for i = 1, #ui.rows do
         local row = ui.rows[i]
         local it = filtered[i + offset]
@@ -2023,13 +2037,13 @@ function ui.UpdatePreviewLabel()
         if v == "HIDE" then nHide = nHide + 1 else nTransmog = nTransmog + 1 end
     end
     if nTransmog == 0 and nHide == 0 then
-        ui.previewLbl:SetText("Previewing current look  |  Left-click an item to stage, right-click to apply directly")
+        ui.previewLbl:SetText("Previewing current look\nLeft-click to stage, right-click to apply")
         ui.previewLbl:SetTextColor(0.6, 0.6, 0.65)
     else
         local parts = {}
         if nTransmog > 0 then table.insert(parts, nTransmog .. " transmog" .. (nTransmog > 1 and "s" or "")) end
         if nHide     > 0 then table.insert(parts, nHide     .. " hide"     .. (nHide     > 1 and "s" or "")) end
-        ui.previewLbl:SetText(table.concat(parts, " + ") .. " staged  |  Apply Preview to commit")
+        ui.previewLbl:SetText(table.concat(parts, " + ") .. " staged\nApply Preview to commit")
         ui.previewLbl:SetTextColor(0.95, 0.85, 0.45)
     end
 end

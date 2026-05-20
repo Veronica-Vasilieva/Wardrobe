@@ -1,5 +1,23 @@
 # Wardrobe — changelog
 
+## [1.2] - 2026-05-20
+
+### Fixed
+- **Tabard tab (and any other small-collection slot) appeared empty
+  even though items were cached.** Same root cause as the search
+  bug below: `FauxScrollFrame` keeps its scroll offset across slot
+  switches and search refilters, so going from a 256-item slot
+  scrolled to row 100 → a 9-item slot left every row reading past
+  the end of `filtered`. `RefreshList` now clamps the offset to
+  `max(0, #filtered - #ui.rows)` and re-syncs `SetVerticalScroll`.
+- **Search stopped returning matches after a few letters.** Same
+  scroll-offset-stale issue — narrowing the search shrank
+  `#filtered` below the parked offset. The same clamp fixes it.
+- **Preview label overflowed the doll column** and clipped behind
+  the right pane. The label now has `SetWidth(DOLL_WIDTH)` +
+  `SetJustifyH("CENTER")` and its messages were split into two
+  shorter lines so everything fits cleanly under the doll.
+
 ## [1.1] - 2026-05-20
 
 ### Added
