@@ -57,7 +57,19 @@ def fail(msg):
 
 
 def info(msg):
-    sys.stdout.write(msg + "\n")
+    # On Windows the default stdout encoding is cp1252, which chokes on
+    # characters that show up legitimately in CHANGELOG bodies (arrows,
+    # em-dashes, ellipsis, etc.). Replace anything unprintable rather
+    # than crashing mid-release.
+    msg = msg + "\n"
+    try:
+        sys.stdout.write(msg)
+    except UnicodeEncodeError:
+        try:
+            sys.stdout.buffer.write(msg.encode("utf-8"))
+        except Exception:
+            enc = getattr(sys.stdout, "encoding", "ascii") or "ascii"
+            sys.stdout.write(msg.encode(enc, errors="replace").decode(enc))
     sys.stdout.flush()
 
 
@@ -218,23 +230,28 @@ def do_release(version, zip_path, notes):
         info("Syncing local files into clone...")
         sync_repo(clone_dir)
 
-        # Anything changed?
-        status = run(
-            ["git", "status", "--porcelain"],
-            cwd=clone_dir, capture=True,
-        ).stdout
-        if status.strip():
+        # Stage everything and then check whether anything was actually
+        # staged. `git status --porcelain` can falsely report files as
+        # modified when CRLF line endings get auto-normalised on fresh
+        # clones; after `add .`, those normalise to no change. Using
+        # `git diff --cached --quiet` (exit 0 = nothing staged) catches
+        # the real "anything to commit" condition.
+        git_env = [
+            "-c", "user.name=Veronica-Vasilieva",
+            "-c", "user.email=noreply@github.com",
+        ]
+        run(["git", *git_env, "add", "."], cwd=clone_dir)
+        diff = run(
+            ["git", "diff", "--cached", "--quiet"],
+            cwd=clone_dir, check=False,
+        )
+        if diff.returncode != 0:
             info("Committing and pushing...")
-            git_env = [
-                "-c", "user.name=Veronica-Vasilieva",
-                "-c", "user.email=noreply@github.com",
-            ]
             commit_msg = (
                 f"release: v{version}\n\n"
                 f"See CHANGELOG.md for details.\n\n"
                 f"Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
             )
-            run(["git", *git_env, "add", "."], cwd=clone_dir)
             run(["git", *git_env, "commit", "-m", commit_msg], cwd=clone_dir)
             run(["git", "push"], cwd=clone_dir)
         else:
