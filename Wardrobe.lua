@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.11
+-- Wardrobe  v1.12
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.11"
+local ADDON_VERSION = "1.12"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -1547,7 +1547,23 @@ local function CreateMainFrame()
     search:SetPoint("TOPLEFT", 8, -4)
     search:SetAutoFocus(false)
     search:SetMaxLetters(40)
-    search:SetScript("OnTextChanged", function(self) ui.RefreshList() end)
+    -- Debounce: each keystroke resets a 100ms timer; we only call RefreshList
+    -- once typing pauses. Avoids running a full filter pass on every char.
+    local searchDeb = CreateFrame("Frame", nil, search)
+    searchDeb:Hide()
+    searchDeb.timer = 0
+    searchDeb:SetScript("OnUpdate", function(self, elapsed)
+        self.timer = self.timer + elapsed
+        if self.timer >= 0.1 then
+            self.timer = 0
+            self:Hide()
+            ui.RefreshList()
+        end
+    end)
+    search:SetScript("OnTextChanged", function()
+        searchDeb.timer = 0
+        searchDeb:Show()
+    end)
     search:SetScript("OnEscapePressed", function(self) self:SetText(""); self:ClearFocus() end)
     ui.search = search
 
@@ -1938,18 +1954,42 @@ local function CreateMainFrame()
     ui.barFrame = bar
     bar:SetBackdropBorderColor(0.4, 0.3, 0.55)
 
-    local applyAll = MakeBtn("Apply All (Save Pending)", 170, bar, function()
+    -- Primary action: drives all staged previews through the gossip flow
+    -- and commits them with a single cost popup. Mirror of the same button
+    -- in the doll column so users can reach it without crossing the window.
+    local applyPrevBottom = MakeBtn("Apply Preview", 115, bar, function()
+        ApplyPreview()
+    end)
+    applyPrevBottom:SetPoint("LEFT", 8, 0)
+    applyPrevBottom:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Apply staged previews")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Drives every staged preview through the gossip flow one at a time, then auto-commits with a single Save Pending popup.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    applyPrevBottom:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    ui.applyPrevBottom = applyPrevBottom
+
+    -- Save Pending: just clicks the server's "Save pending transmogrifications"
+    -- option. Useful if you ran Apply Preview partway and want to commit
+    -- what's already staged on the server, or if you queued items manually
+    -- via the Server Menu and want to commit those.
+    local applyAll = MakeBtn("Save Pending", 100, bar, function()
         ClickExtra("savePending", "Save pending transmogrifications")
     end)
-    applyAll:SetPoint("LEFT", 8, 0)
+    applyAll:SetPoint("LEFT", applyPrevBottom, "RIGHT", 6, 0)
 
-    local cancelAll = MakeBtn("Cancel Pending", 120, bar, function()
+    local cancelAll = MakeBtn("Cancel Pending", 110, bar, function()
         ClickExtra("cancelPending", "Cancel pending transmogrifications")
     end)
     cancelAll:SetPoint("LEFT", applyAll, "RIGHT", 6, 0)
 
+    -- Restore Original is destructive — strips transmogs from every slot
+    -- with no undo. Wrap in a confirmation popup to prevent accidental
+    -- clicks costing the user the gold to re-apply each look.
     local restore = MakeBtn("Restore Original", 130, bar, function()
-        ClickExtra("restore", "Restore original look")
+        StaticPopup_Show("WARDROBE_CONFIRM_RESTORE_ORIGINAL")
     end)
     restore:SetPoint("LEFT", cancelAll, "RIGHT", 6, 0)
 
@@ -2160,9 +2200,12 @@ function ui.RefreshList()
     else
         base = "No scan yet"
     end
+    -- During cache warming, show the warming counter alone so the stamp
+    -- text stays short enough to fit the bottom bar without overlapping
+    -- the action buttons. Once warming finishes the full stamp returns.
     if WarmingActive() then
-        ui.stamp:SetText(string.format("|cffffd200Warming %d/%d|r  |  %s",
-            warmIdx - 1, warmTotal, base))
+        ui.stamp:SetText(string.format("|cffffd200Warming %d/%d|r",
+            warmIdx - 1, warmTotal))
     else
         ui.stamp:SetText(base)
     end
@@ -2508,6 +2551,16 @@ StaticPopupDialogs["WARDROBE_DELETE_SERVER_SET"] = {
         local sets = GetCharDB().serverSets
         if idx and sets[idx] then StartDeleteServerSet(sets[idx].name) end
     end,
+}
+
+StaticPopupDialogs["WARDROBE_CONFIRM_RESTORE_ORIGINAL"] = {
+    text         = "Remove transmogs from |cffff8c40every equipped slot|r?\n\nThis can't be undone — you'll have to re-apply each appearance individually (which costs gold per slot).",
+    button1      = "Restore",
+    button2      = "Cancel",
+    timeout      = 0,
+    whileDead    = true,
+    hideOnEscape = true,
+    OnAccept     = function() ClickExtra("restore", "Restore original look") end,
 }
 
 function ui.SelectSlot(slotId)

@@ -1,5 +1,34 @@
 # Wardrobe — changelog
 
+## [1.12] - 2026-05-20
+
+Day 2 of the ROADMAP polish sprint.
+
+### Added
+- **Apply Preview shortcut in the bottom bar** (roadmap item #13).
+  Now the primary commit button lives in both the doll column (where
+  you stage things) and the bottom action bar (next to the other
+  commit/cancel buttons), so you can reach it without looking across
+  the window. Both buttons call the same `ApplyPreview` function.
+- **Restore Original confirmation** (roadmap item #14). The button
+  now opens a `StaticPopup` asking "Remove transmogs from every
+  equipped slot?" with a Yes/No before firing the destructive
+  server-side action. Saves accidental clicks costing gold to recover.
+
+### Changed
+- **Search-box debounce** (roadmap item #3). Keystrokes no longer
+  trigger an immediate `RefreshList` — instead they reset a 100ms
+  timer and the refresh fires once typing pauses. Fast typers see
+  far less churn (one filter pass per word, not per character).
+- "Apply All (Save Pending)" renamed to **"Save Pending"** (shorter
+  label) to make room for the new Apply Preview button. Same
+  function — clicks the server's "Save pending transmogrifications"
+  gossip option directly.
+- Stamp text during cache warming now shows just `Warming N/M`
+  instead of `Warming N/M | Last scan: …` so it doesn't overlap the
+  newly tighter bottom button bar. The full stamp returns once
+  warming finishes.
+
 ## [1.11] - 2026-05-20
 
 Day 1 of the ROADMAP polish sprint.
