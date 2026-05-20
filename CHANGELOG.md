@@ -1,5 +1,15 @@
 # Wardrobe — changelog
 
+## [1.1] - 2026-05-20
+
+### Added
+- **"?" info badge** in the top-right corner of the wardrobe window
+  (just left of the close button). Hovering it shows the addon name,
+  version, author, a one-paragraph About summary, the full slash
+  command list, in-window control reference (left-click stages,
+  right-click applies, doll rotation/pan/zoom), license summary,
+  and the project GitHub URL. Mirrors AutoLoot's info badge.
+
 ## [1.0] - 2026-05-20
 
 First public release. Cumulative feature set:

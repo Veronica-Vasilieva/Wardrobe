@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.0
+-- Wardrobe  v1.1
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.0"
+local ADDON_VERSION = "1.1"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -1330,6 +1330,49 @@ local function CreateMainFrame()
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -2, -2)
     close:SetScript("OnClick", function() f:Hide() end)
+
+    -- "?" info badge next to the close button. Hover -> addon info, slash
+    -- command list, license, and project URL. Mirrors the AutoLoot pattern.
+    local infoBadge = CreateFrame("Frame", nil, f)
+    infoBadge:SetSize(20, 20)
+    infoBadge:SetPoint("TOPRIGHT", -32, -10)
+    infoBadge:EnableMouse(true)
+    local ibBg = infoBadge:CreateTexture(nil, "BACKGROUND")
+    ibBg:SetAllPoints()
+    ibBg:SetTexture("Interface\\Buttons\\WHITE8X8")
+    ibBg:SetVertexColor(0.18, 0.10, 0.30, 0.85)
+    local ibTxt = infoBadge:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    ibTxt:SetPoint("CENTER", 0, 0)
+    ibTxt:SetText("|cffffd700?|r")
+    infoBadge:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:AddLine("|cffd4af37" .. ADDON_NAME .. "|r v" .. ADDON_VERSION)
+        GameTooltip:AddLine("|cff888866by " .. ADDON_AUTHOR .. "|r")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("|cffffd700About:|r")
+        GameTooltip:AddLine("|cffaaaaaaInteractive transmog browser for Project Ebonhold's Warpweaver NPC. Replaces the gossip-menu paging UI with a searchable per-slot wardrobe, 3D paper-doll preview, outfits, and Manage Sets integration.|r", 1, 1, 1, true)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("|cffffd700Slash commands:|r")
+        GameTooltip:AddLine("|cffaaaaaa/wb|r |cff888866 or |r|cffaaaaaa/wardrobe|r   |cff666666open/close|r")
+        GameTooltip:AddLine("|cffaaaaaa/wb rescan|r   |cff666666rescan collection + server sets|r")
+        GameTooltip:AddLine("|cffaaaaaa/wb reset|r   |cff666666wipe all saved data|r")
+        GameTooltip:AddLine("|cffaaaaaa/wb debug|r   |cff666666toggle verbose chat logging|r")
+        GameTooltip:AddLine("|cffaaaaaa/wb npcname <Name>|r   |cff666666register a custom NPC name|r")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("|cffffd700In-window controls:|r")
+        GameTooltip:AddLine("|cffaaaaaaLeft-click item|r   |cff666666stage on the doll|r")
+        GameTooltip:AddLine("|cffaaaaaaRight-click item|r   |cff666666apply immediately|r")
+        GameTooltip:AddLine("|cffaaaaaaLeft-drag doll|r   |cff666666rotate model|r")
+        GameTooltip:AddLine("|cffaaaaaaRight-drag doll|r   |cff666666pan vertically|r")
+        GameTooltip:AddLine("|cffaaaaaaMouse wheel on doll|r   |cff666666zoom in/out|r")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("|cffffd700License:|r")
+        GameTooltip:AddLine("|cffaaaaaaSource-available. Attribution required. See LICENSE for full terms.|r", 1, 1, 1, true)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("|cff888866" .. ADDON_URL .. "|r")
+        GameTooltip:Show()
+    end)
+    infoBadge:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     -- Closing the wardrobe ends the gossip session cleanly. Calling
     -- CloseGossip() fires GOSSIP_CLOSED which restores GossipFrame visibility.
