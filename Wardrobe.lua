@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.7
+-- Wardrobe  v1.8
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.7"
+local ADDON_VERSION = "1.8"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -2028,10 +2028,19 @@ function ui.RefreshList()
     end)
 
     FauxScrollFrame_Update(ui.listScroll, #filtered, #ui.rows, 22)
+    -- CRITICAL: 3.3.5a's FauxScrollFrame_Update calls `frame:Hide()` when
+    -- numItems <= numToDisplay (i.e. the filtered list fits without
+    -- scrolling). That hides the entire scroll frame AND all its child
+    -- rows — list looks empty even though we have items to show. Force
+    -- it visible after every Update so the rows stay rendered.
+    -- This was the root cause of "search past 2 letters shows nothing":
+    -- 2 chars typically still matched >22 items, 3+ chars dropped below
+    -- the row-pool count and the auto-hide kicked in.
+    ui.listScroll:Show()
     -- Clamp the offset to the new filtered range. Without this, switching
     -- from a large slot (e.g. Head, 256 items) to a small one (Tabard, 9)
     -- or narrowing a search leaves the scrollbar parked past the end of the
-    -- new list and every row reads past `filtered` — the list LOOKS empty
+    -- new list and every row reads past `filtered` — list LOOKS empty
     -- even though we have items.
     local maxOffset = math.max(0, #filtered - #ui.rows)
     local offset    = FauxScrollFrame_GetOffset(ui.listScroll)

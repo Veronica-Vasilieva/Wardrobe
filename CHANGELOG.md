@@ -1,5 +1,33 @@
 # Wardrobe — changelog
 
+## [1.8] - 2026-05-20
+
+### Fixed
+- **Search past 2 letters showed empty list — actual root cause this
+  time.** 3.3.5a's `FauxScrollFrame_Update` contains this:
+
+  ```lua
+  if ( numItems > numToDisplay or alwaysShowScrollBar ) then
+      frame:Show();
+  else
+      scrollBar:SetValue(0);
+      frame:Hide();      -- hides the WHOLE scroll frame
+  end
+  ```
+
+  When the filtered list (4 items for "arc") fit inside the row pool
+  (22 rows), Update called `frame:Hide()` on the scroll frame, which
+  hid all child rows. Symptom: stamp said "4 items" but the list
+  area was empty. 2 chars usually still matched >22 items so the
+  scroll frame stayed visible; 3+ chars dropped below the threshold.
+
+  Fix: call `ui.listScroll:Show()` right after every Update to
+  counteract the auto-hide.
+
+### Notes
+- The v1.7 re-entry guard and v1.2 offset clamp remain as defensive
+  code; they handled real but different edge cases.
+
 ## [1.7] - 2026-05-20
 
 ### Fixed
