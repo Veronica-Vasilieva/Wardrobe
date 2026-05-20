@@ -153,10 +153,10 @@ Pays off in iteration speed for everything above.
     *Why:* It's currently ~2200 lines. Split into `Core.lua`, `Scan.lua`,
     `UI.lua`, `Outfits.lua`, `ServerSets.lua`. Easier diffs, easier
     onboarding.
-33. **Build script.** [M]
-    *Why:* Every release I've been doing `cp + Compress-Archive +
-    gh release` by hand. A `python build_release.py vX.Y` would do it
-    all in one shot.
+33. ~~**Build script.**~~ ✅ Done — `build_release.py` lives at repo
+    root. `python build_release.py` builds the zip in `dist/`;
+    `python build_release.py --release` does the full GitHub flow
+    with notes auto-extracted from CHANGELOG.md.
 34. **Settings panel.** [L]
     *Why:* `/wb debug`, `/wb npcname`, and the BG checkbox are
     scattered. A proper settings frame with grouped checkboxes.
