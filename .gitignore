@@ -1,0 +1,11 @@
+# Build output (release zips and staging)
+dist/
+
+# Python build-script artifacts
+__pycache__/
+*.pyc
+
+# Editor backups
+*.bak
+*.swp
+*~
