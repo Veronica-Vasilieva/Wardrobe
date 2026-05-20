@@ -61,13 +61,142 @@ server's Manage Sets feature.
 
 ## Installation
 
-1. Download the latest `Wardrobe-vX.Y.zip` from the
-   [Releases](https://github.com/Veronica-Vasilieva/Wardrobe/releases)
-   page.
-2. Extract into your `Interface/AddOns/` folder.
-3. **The folder must be named `Wardrobe` exactly** — rename if your zip
-   tool used a different name.
-4. `/reload` in-game.
+A step-by-step guide for anyone who isn't comfortable with file
+management. The whole process takes about two minutes.
+
+### 1. Close World of Warcraft
+
+If WoW (or your private-server launcher) is running, close it first. WoW
+only scans for addons when it starts up, so installing one while the
+game is open won't help.
+
+### 2. Download the zip
+
+Open the addon's releases page in any browser:
+**https://github.com/Veronica-Vasilieva/Wardrobe/releases**
+
+Click the **green "Latest" tag** at the top of the page (currently
+`v1.10`). Under that release's **Assets** section, click
+**`Wardrobe-v1.10.zip`** to download it. The file will land in your
+`Downloads` folder.
+
+### 3. Find your AddOns folder
+
+This is where WoW expects addons to live. The path is:
+
+```
+<your WoW folder>\Interface\AddOns\
+```
+
+The hard part is finding `<your WoW folder>`. Common locations on a
+Windows PC:
+
+| Source | Typical path |
+|---|---|
+| Project Ebonhold / Valanior launcher | `C:\Users\<your name>\Valanior-WoW\` or wherever the launcher unpacked it |
+| Manual 3.3.5a install | `C:\Program Files\World of Warcraft\` |
+| Custom location | wherever you put it when you installed |
+
+**The reliable way to find it:** open your WoW launcher and look for a
+"Game Settings", "Installation Path", or similar option — most
+private-server launchers expose this directly. Failing that, right-click
+your launcher shortcut, choose **Open file location**, and the folder
+that opens is your WoW folder.
+
+Once you've found the WoW folder, open it and navigate into the
+`Interface\AddOns` subfolder. Create the `AddOns` folder if it doesn't
+exist (it's case-insensitive but the spelling matters).
+
+### 4. Extract the zip
+
+Right-click `Wardrobe-v1.10.zip` (in your Downloads folder) and choose
+**Extract All...** in the menu. In the dialog that pops up:
+
+- Click **Browse...** and navigate to the `Interface\AddOns` folder you
+  found in step 3.
+- Click **Extract**.
+
+Windows will create a folder called `Wardrobe` inside `AddOns`. Verify
+that the final layout looks exactly like this:
+
+```
+<your WoW folder>\
+  Interface\
+    AddOns\
+      Wardrobe\
+        CHANGELOG.md
+        LICENSE
+        Media\
+          Background.tga
+        README.md
+        Wardrobe.lua
+        Wardrobe.toc
+```
+
+### 5. Watch out for the most common mistake
+
+Some zip tools (or some browsers) wrap the contents in an extra folder.
+If after extracting you see this instead:
+
+```
+AddOns\
+  Wardrobe\
+    Wardrobe\               ← extra nested folder, bad
+      Wardrobe.lua
+      ...
+```
+
+…you need to flatten it. Open the outer `Wardrobe` folder, select
+everything inside the inner `Wardrobe` folder, drag it up into the outer
+one, then delete the empty inner folder. The `Wardrobe.lua` file MUST
+sit directly inside a folder called `Wardrobe`, not inside
+`Wardrobe\Wardrobe`.
+
+Equally, **the folder must be named `Wardrobe` exactly** — not
+`Wardrobe-v1.10`, not `Wardrobe-main`, not `Wardrobe (1)`. If yours has
+the version or any extra text in the name, right-click it, choose
+**Rename**, and change it to just `Wardrobe`.
+
+### 6. Launch the game and enable the addon
+
+Start WoW through your normal launcher. At the character-select screen,
+look for an **AddOns** button (usually bottom-left). Click it, find
+`Wardrobe` in the list, and make sure its checkbox is ticked. Some
+servers enable new addons automatically — if you don't see an AddOns
+button at all, that's normal.
+
+Log in to a character. If the install worked, you'll see this line in
+your chat window within a second or two:
+
+```
+Wardrobe: v1.10 by Veronica-Vasilieva loaded. Talk to a Warpweaver to begin.
+```
+
+### 7. Try it out
+
+Find any **Warpweaver** transmog NPC and right-click them. The Wardrobe
+window will open in place of the usual gossip menu after a 1–3 second
+scan of your collection. Hover the `?` badge in the top-right corner of
+the wardrobe for a quick reference of every control and command.
+
+### Troubleshooting
+
+- **No "Wardrobe: v1.10 loaded" message at login.** WoW didn't find the
+  addon. The folder is in the wrong place or has the wrong name. Recheck
+  the layout in step 4 — `Wardrobe.toc` and `Wardrobe.lua` must be
+  directly inside a folder called `Wardrobe`, which itself is directly
+  inside `Interface\AddOns`.
+- **Right-clicking the Warpweaver still shows the old gossip menu.**
+  Try `/wb` to open the wardrobe manually. If that says "Unknown
+  command," WoW didn't load the addon — see the previous point.
+- **The "?" badge tooltip lists controls but the wardrobe is broken in
+  some other way.** Type `/wb reset` followed by `/reload`. That wipes
+  the cached scan data and starts fresh. Then talk to a Warpweaver
+  again to trigger a new scan.
+- **You see a Lua error popup mentioning Wardrobe.** Take a screenshot
+  of the error (including the line number) and open a
+  [GitHub Issue](https://github.com/Veronica-Vasilieva/Wardrobe/issues)
+  — I'll usually have a fix out within a day.
 
 ## Usage
 
