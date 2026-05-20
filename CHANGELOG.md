@@ -1,5 +1,39 @@
 # Wardrobe — changelog
 
+## [1.11] - 2026-05-20
+
+Day 1 of the ROADMAP polish sprint.
+
+### Added
+- **Tab badges for staged previews.** Slot tabs now show a gold
+  `* N` instead of plain `N` when a preview is staged for that slot
+  (roadmap item #4). Lets you see at a glance where your pending
+  changes sit without having to click into each tab.
+- **Hide button works on enchant slots.** The button is no longer
+  greyed out when an enchant slot is selected (roadmap item #1). The
+  `HideSlot` regex (`^hide `) already catches both `Hide item` and
+  `Hide enchant`; the only fix needed was re-enabling the button and
+  passing the `isEnchant` flag through `ParseItemOption` so plain-text
+  enchant rows aren't mis-treated as the Hide option.
+
+### Changed
+- **Errors surface as red banner text.** Precondition messages like
+  "Open the Warpweaver first", "Already busy", "Nothing to apply",
+  and "No mapping for that slot" now appear on `UIErrorsFrame` (the
+  Blizzard top-of-screen red text used for "Out of mana!" etc.) as
+  well as in chat (roadmap item #2). Much harder to miss.
+- **Enchant rows label as "Enchant", not "Common".** Enchant
+  illusions have no item quality, so the quality column was falling
+  through to `QUALITY_NAME[1] = "Common"` which was misleading. Now
+  shows "Enchant" in a gold tint matching the icon (roadmap item
+  #19). The name itself also gets the gold tint for consistency.
+
+### Verified (no code change needed)
+- **Search persists across slot switches** (roadmap item #5). The
+  `EditBox` retains its text across tab clicks, and `RefreshList`
+  reads `GetText()` on every run, so the filter applies to whichever
+  slot is currently active. Already worked correctly.
+
 ## [1.10] - 2026-05-20
 
 ### Fixed

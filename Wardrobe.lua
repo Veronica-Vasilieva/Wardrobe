@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.10
+-- Wardrobe  v1.11
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.10"
+local ADDON_VERSION = "1.11"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -175,6 +175,16 @@ local function Dbg(msg)
     if GetDB().debug then
         DEFAULT_CHAT_FRAME:AddMessage("|cff7f7f7f[wb] " .. tostring(msg) .. "|r")
     end
+end
+
+-- User-facing failure messages. The chat fallback ensures the message is
+-- recoverable later; the UIErrorsFrame banner (the red text Blizzard uses
+-- for "Out of mana!" etc.) catches the user's attention immediately.
+local function ErrorMsg(msg)
+    if UIErrorsFrame and UIErrorsFrame.AddMessage then
+        UIErrorsFrame:AddMessage(tostring(msg), 1.0, 0.35, 0.35)
+    end
+    Print(msg)
 end
 
 -------------------------------------------------------------------------------
@@ -819,21 +829,21 @@ end
 
 local function StartSlotAction(slotId, findTarget, label)
     if applyState.active then
-        Print("Already busy — please wait.")
+        ErrorMsg("Already busy — please wait.")
         return
     end
     if scanState.active then
-        Print("Scan still running — please wait.")
+        ErrorMsg("Scan still running — please wait.")
         return
     end
     if not GossipFrame or (not GossipFrame:IsShown() and not suppressing) then
-        Print("Open the Warpweaver first.")
+        ErrorMsg("Open the Warpweaver first.")
         return
     end
     local char = GetCharDB()
     local optIdx = char.slotMenuMap[slotId]
     if not optIdx then
-        Print("No mapping for that slot — try /wb rescan.")
+        ErrorMsg("No mapping for that slot — try /wb rescan.")
         return
     end
     applyState.active     = true
@@ -856,15 +866,19 @@ local function ApplyEntry(slotId, entry)
     end, "apply " .. tostring(entry))
 end
 
--- "Hide item" lives on page 1 of each slot's submenu — page-1 only, so the
--- driver clicks into the slot and the very first page contains the target.
+-- "Hide item" lives on page 1 of each slot's submenu (regular slots) and
+-- enchant slots emit the same idea as "Hide enchant". Both variants match
+-- the "^hide " regex (literal "hide" followed by a space), which excludes
+-- item names like "Hideous Plate" because there's no space after "hide".
+-- We also pass isEnchant=true to ParseItemOption so plain-text enchant
+-- rows (no hyperlink) are correctly skipped from the "is this Hide?" check.
 local function HideSlot(slotId)
+    local isEnchant = IsEnchantSlot(slotId)
     StartSlotAction(slotId, function(opts)
         for _, opt in ipairs(opts) do
-            if not ParseItemOption(opt.text) then
+            if not ParseItemOption(opt.text, isEnchant) then
                 local lc = opt.plain:lower()
-                -- Match "Hide item" but not item names containing the word
-                if lc == "hide item" or lc:find("^hide ", 1) then
+                if lc:find("^hide ", 1) then
                     return opt.index
                 end
             end
@@ -897,7 +911,7 @@ local function OnGossipShowDuringApply()
         if nextIdx and applyState.pageCount < SCAN_MAX_PAGES then
             ScheduleClick(function() SelectGossipOption(nextIdx) end)
         else
-            Print("Target not found in this slot (" .. (applyState.label or "?") .. "). Try /wb rescan.")
+            ErrorMsg("Target not found in this slot (" .. (applyState.label or "?") .. "). Try /wb rescan.")
             applyState.phase = "walking_back"
             if not ReturnToMainStep(opts) then
                 ResetApply()
@@ -964,11 +978,11 @@ local outfitFinalize = false   -- after queue drains, click Save Pending
 -- the next. When the queue drains, click Save Pending to commit them all.
 local function ApplyPreview()
     if applyState.active or scanState.active then
-        Print("Already busy — wait for current action to finish.")
+        ErrorMsg("Already busy — wait for current action to finish.")
         return
     end
     if not GossipFrame or (not GossipFrame:IsShown() and not suppressing) then
-        Print("Open the Warpweaver first.")
+        ErrorMsg("Open the Warpweaver first.")
         return
     end
     local q = {}
@@ -976,7 +990,7 @@ local function ApplyPreview()
         table.insert(q, {slotId = slotId, entry = entry})
     end
     if #q == 0 then
-        Print("Nothing to apply — pick at least one appearance first.")
+        ErrorMsg("Nothing to apply — pick at least one appearance first.")
         return
     end
     outfitQueue    = q
@@ -1204,16 +1218,16 @@ end
 
 local function StartUseServerSet(setName)
     if applyState.active or scanState.active or setActionState.active then
-        Print("Already busy — please wait.")
+        ErrorMsg("Already busy — please wait.")
         return
     end
     if not GossipFrame or (not GossipFrame:IsShown() and not suppressing) then
-        Print("Open the Warpweaver first.")
+        ErrorMsg("Open the Warpweaver first.")
         return
     end
     local char = GetCharDB()
     if not char.extras.manageSets then
-        Print("'Manage sets' option not found — try /wb rescan.")
+        ErrorMsg("'Manage sets' option not found — try /wb rescan.")
         return
     end
     setActionState.active  = true
@@ -1227,16 +1241,16 @@ end
 
 local function StartSaveServerSet(setName)
     if applyState.active or scanState.active or setActionState.active then
-        Print("Already busy — please wait.")
+        ErrorMsg("Already busy — please wait.")
         return
     end
     if not GossipFrame or (not GossipFrame:IsShown() and not suppressing) then
-        Print("Open the Warpweaver first.")
+        ErrorMsg("Open the Warpweaver first.")
         return
     end
     local char = GetCharDB()
     if not char.extras.manageSets then
-        Print("'Manage sets' option not found — try /wb rescan.")
+        ErrorMsg("'Manage sets' option not found — try /wb rescan.")
         return
     end
     setActionState.active  = true
@@ -1250,16 +1264,16 @@ end
 
 local function StartDeleteServerSet(setName)
     if applyState.active or scanState.active or setActionState.active then
-        Print("Already busy — please wait.")
+        ErrorMsg("Already busy — please wait.")
         return
     end
     if not GossipFrame or (not GossipFrame:IsShown() and not suppressing) then
-        Print("Open the Warpweaver first.")
+        ErrorMsg("Open the Warpweaver first.")
         return
     end
     local char = GetCharDB()
     if not char.extras.manageSets then
-        Print("'Manage sets' option not found — try /wb rescan.")
+        ErrorMsg("'Manage sets' option not found — try /wb rescan.")
         return
     end
     setActionState.active  = true
@@ -2029,8 +2043,17 @@ end
 function ui.RefreshTabs()
     local char = GetCharDB()
     for _, tab in pairs(ui.slotTabs) do
-        local list = char.collection[tab.slotId]
-        tab.count:SetText(list and tostring(#list) or "-")
+        local list        = char.collection[tab.slotId]
+        local hasPreview  = previewSlots[tab.slotId] ~= nil
+        -- Prefix a gold asterisk on tabs with a staged preview so the user
+        -- can see at a glance where their pending changes sit.
+        if hasPreview then
+            tab.count:SetText("* " .. (list and tostring(#list) or "-"))
+            tab.count:SetTextColor(1, 0.85, 0.30)
+        else
+            tab.count:SetText(list and tostring(#list) or "-")
+            tab.count:SetTextColor(0.6, 0.6, 0.7)
+        end
         if tab.slotId == ui.currentSlot then
             tab.bg:SetVertexColor(0.45, 0.30, 0.65, 0.85)
             tab.fs:SetTextColor(1, 0.95, 0.6)
@@ -2100,6 +2123,7 @@ function ui.RefreshList()
         offset = maxOffset
         ui.listScroll:SetVerticalScroll(maxOffset * 22)
     end
+    local rowsAreEnchant = IsEnchantSlot(ui.currentSlot)
     for i = 1, #ui.rows do
         local row = ui.rows[i]
         local it = filtered[i + offset]
@@ -2107,9 +2131,17 @@ function ui.RefreshList()
             row.icon:SetTexture(it.icon)
             local c = QUALITY_COLOR[it.quality or 1] or {1,1,1}
             row.nameFs:SetText(it.name or "?")
-            row.nameFs:SetTextColor(c[1], c[2], c[3])
-            row.qualFs:SetText(QUALITY_NAME[it.quality or 1] or "")
-            row.qualFs:SetTextColor(c[1]*0.8, c[2]*0.8, c[3]*0.8)
+            if rowsAreEnchant then
+                -- Enchants have no item quality (everything falls to "Common"
+                -- which is misleading). Show "Enchant" in a gold tint instead.
+                row.nameFs:SetTextColor(0.95, 0.85, 0.45)
+                row.qualFs:SetText("Enchant")
+                row.qualFs:SetTextColor(0.75, 0.60, 0.25)
+            else
+                row.nameFs:SetTextColor(c[1], c[2], c[3])
+                row.qualFs:SetText(QUALITY_NAME[it.quality or 1] or "")
+                row.qualFs:SetTextColor(c[1]*0.8, c[2]*0.8, c[3]*0.8)
+            end
             row.itemData = it
             row:Show()
         else
@@ -2142,13 +2174,10 @@ function ui.UpdateHideButton()
     if not ui.hideBtn then return end
     local s = SLOT_BY_ID[ui.currentSlot]
     ui.hideBtn:SetText("Hide " .. (s and s.label or "Slot"))
-    -- Enchant pseudo-slots have no "Hide item" option in their gossip
-    -- submenu, so the button would just error out. Disable visually.
-    if s and s.isEnchant then
-        ui.hideBtn:Disable()
-    else
-        ui.hideBtn:Enable()
-    end
+    -- Enchant slots have a "Hide enchant" option in their submenu, which
+    -- HideSlot's regex (^hide ) catches the same way as "Hide item" on
+    -- regular slots. Both variants work.
+    ui.hideBtn:Enable()
 end
 
 -- Apply the background-art preference: show/hide the wallpaper texture and
@@ -2186,6 +2215,9 @@ function ui.UpdatePreviewLabel()
         ui.previewLbl:SetText(table.concat(parts, " + ") .. " staged\nApply Preview to commit")
         ui.previewLbl:SetTextColor(0.95, 0.85, 0.45)
     end
+    -- Re-render slot tab counters so the gold "*" badge appears/disappears
+    -- in sync with the staged-preview set.
+    if ui.RefreshTabs then ui.RefreshTabs() end
 end
 
 -- Walk previewSlots and TryOn each item's link. Reset to the player's
@@ -2354,7 +2386,7 @@ end
 function ui.SaveCurrentPreviewAsOutfit(name)
     local n = 0; for _ in pairs(previewSlots) do n = n + 1 end
     if n == 0 then
-        Print("Nothing to save — preview some items first.")
+        ErrorMsg("Nothing to save — preview some items first.")
         return
     end
     local char = GetCharDB()
