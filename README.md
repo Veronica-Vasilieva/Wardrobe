@@ -51,6 +51,11 @@ server's Manage Sets feature.
 - **Custom background art** behind the wardrobe window (purple/gold
   transmog scene). Column backdrops are kept at moderate alpha so the
   art is visible without sacrificing foreground readability.
+- **Minimap button** so you can open the wardrobe to browse, favourite,
+  and stage outfits anywhere — no need to be at the Warpweaver for
+  inspection. Left-click toggles, right-click hides, drag-around-rim
+  to reposition; restore a hidden button with `/wb minimap`. Apply
+  chains still happen at the NPC.
 - **In-game help** — hover the **?** badge in the top-right of the
   wardrobe for the addon name + version, a one-paragraph About, the
   full slash command list, control reference, license summary, and
@@ -245,6 +250,8 @@ reuses the cache (rescan every 30 minutes automatically, or
 | `/wb rescan` | Force a full rescan of your collection and server sets |
 | `/wb reset` | Wipe all SavedVariables (requires `/reload`) |
 | `/wb debug` | Toggle verbose chat logging (per-page gossip option dump during scans / apply flows) |
+| `/wb minimap` | Show / hide the minimap button |
+| `/wb minimap reset` | Re-centre the minimap button to its default position |
 | `/wb npcname <Name>` | Register an alias if your server uses a different name than "Warpweaver" |
 
 ## Server requirements

@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.15
+-- Wardrobe  v1.16
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.15"
+local ADDON_VERSION = "1.16"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -91,6 +91,7 @@ local NPC_NAMES = { ["Warpweaver"] = true }  -- extensible via /wb npcname
 local BuildWarmQueue
 local WarmingActive
 local WarmTick
+local CreateMinimapButton
 
 local SCAN_TTL          = 30 * 60   -- rescan if older than 30 min
 local SCAN_STEP_DELAY   = 0.10      -- seconds between gossip clicks
@@ -108,7 +109,12 @@ local TAB_COL_WIDTH     = 150
 local DB_DEFAULTS = {
     npcNames     = { ["Warpweaver"] = true },
     chars        = {},       -- ["Name-Realm"] = { lastScan, slotMenuMap, extras, collection }
-    ui           = { qualityFilter = 0, showBackground = true, hideApplied = false },
+    ui           = {
+        qualityFilter  = 0,
+        showBackground = true,
+        hideApplied    = false,
+        minimap        = { hide = false, angle = 210 },
+    },
     debug        = false,
 }
 
@@ -136,6 +142,11 @@ local function GetDB()
     if WardrobeDB.ui.qualityFilter  == nil then WardrobeDB.ui.qualityFilter  = 0     end
     if WardrobeDB.ui.showBackground == nil then WardrobeDB.ui.showBackground = true  end
     if WardrobeDB.ui.hideApplied    == nil then WardrobeDB.ui.hideApplied    = false end
+    -- Minimap button state (v1.16+). Saves are nested so old toons that
+    -- already had a ui table get a fresh defaults object on first read.
+    WardrobeDB.ui.minimap = WardrobeDB.ui.minimap or {}
+    if WardrobeDB.ui.minimap.hide  == nil then WardrobeDB.ui.minimap.hide  = false end
+    if WardrobeDB.ui.minimap.angle == nil then WardrobeDB.ui.minimap.angle = 210   end
     -- Stamp the SavedVariables with provenance metadata so the origin of a
     -- save file is identifiable even if the LICENSE/README are stripped from
     -- a redistributed copy.
@@ -1461,6 +1472,8 @@ local function CreateMainFrame()
         GameTooltip:AddLine("|cffaaaaaa/wb rescan|r   |cff666666rescan collection + server sets|r")
         GameTooltip:AddLine("|cffaaaaaa/wb reset|r   |cff666666wipe all saved data|r")
         GameTooltip:AddLine("|cffaaaaaa/wb debug|r   |cff666666toggle verbose chat logging|r")
+        GameTooltip:AddLine("|cffaaaaaa/wb minimap|r   |cff666666hide/show minimap button|r")
+        GameTooltip:AddLine("|cffaaaaaa/wb minimap reset|r   |cff666666recentre the minimap button|r")
         GameTooltip:AddLine("|cffaaaaaa/wb npcname <Name>|r   |cff666666register a custom NPC name|r")
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("|cffffd700In-window controls:|r")
@@ -2854,12 +2867,133 @@ eventFrame:SetScript("OnEvent", function(self, event, arg1)
     elseif event == "PLAYER_LOGIN" then
         GetCharDB()
         InstallGossipSuppression()
+        CreateMinimapButton()
     elseif event == "GOSSIP_SHOW" then
         OnGossipShow()
     elseif event == "GOSSIP_CLOSED" then
         OnGossipClosed()
     end
 end)
+
+-------------------------------------------------------------------------------
+-- MINIMAP BUTTON
+-------------------------------------------------------------------------------
+-- Self-contained — no LibDBIcon dependency, keeps the addon a single-file
+-- zero-dep package. Position is stored as an angle (degrees) around the
+-- minimap rim; the button can be dragged around the rim and right-clicked
+-- to hide. `/wb minimap` toggles visibility; `/wb minimap reset` re-centres.
+--
+-- The UI it opens still requires a prior Warpweaver scan for the lists to
+-- have content, but inspection/staging works anywhere — apply chains are
+-- the only thing that need to be at the NPC.
+
+local minimapButton
+
+local function PositionMinimapButton()
+    if not minimapButton then return end
+    local m = GetDB().ui.minimap
+    local rad = math.rad(m.angle or 210)
+    -- 80px from minimap centre puts the button on the standard rim arc.
+    local x = 80 * math.cos(rad)
+    local y = 80 * math.sin(rad)
+    minimapButton:ClearAllPoints()
+    minimapButton:SetPoint("CENTER", Minimap, "CENTER", x, y)
+end
+
+local function UpdateMinimapButtonVisibility()
+    if not minimapButton then return end
+    if GetDB().ui.minimap.hide then
+        minimapButton:Hide()
+    else
+        minimapButton:Show()
+    end
+end
+
+-- (No `local` here — assigning to the upvalue forward-declared at the top
+-- of the file so the PLAYER_LOGIN handler can resolve it as a local.)
+function CreateMinimapButton()
+    if minimapButton then return end
+    if not Minimap then return end  -- shouldn't happen, but guard anyway
+
+    local btn = CreateFrame("Button", "WardrobeMinimapButton", Minimap)
+    btn:SetFrameStrata("MEDIUM")
+    btn:SetFrameLevel(8)
+    btn:SetSize(31, 31)
+    btn:SetMovable(true)
+    btn:RegisterForDrag("LeftButton")
+    btn:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+
+    -- Icon sits inside the ring. SetTexCoord trims the corner glow so the
+    -- square Blizzard icon fits cleanly inside the round border overlay.
+    local icon = btn:CreateTexture(nil, "BACKGROUND")
+    icon:SetTexture("Interface\\ICONS\\INV_Misc_Cape_18")
+    icon:SetSize(20, 20)
+    icon:SetPoint("TOPLEFT", btn, "TOPLEFT", 7, -6)
+    icon:SetTexCoord(0.08, 0.92, 0.08, 0.92)
+    btn.icon = icon
+
+    -- Blizzard's standard minimap-button ring. 54x54 anchored at TOPLEFT
+    -- is the exact size/position every stock and third-party minimap
+    -- button uses — change at your peril.
+    local border = btn:CreateTexture(nil, "OVERLAY")
+    border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+    border:SetSize(54, 54)
+    border:SetPoint("TOPLEFT", btn, "TOPLEFT", 0, 0)
+
+    btn:SetHighlightTexture("Interface\\Minimap\\UI-Minimap-ZoomButton-Highlight", "ADD")
+
+    btn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:AddLine("|cffd4af37" .. ADDON_NAME .. "|r  |cff888866v" .. ADDON_VERSION .. "|r")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddDoubleLine("|cffffffffLeft-click|r",  "toggle the wardrobe",                          1,1,1, 0.85,0.85,0.85)
+        GameTooltip:AddDoubleLine("|cffffffffRight-click|r", "hide this button",                             1,1,1, 0.85,0.85,0.85)
+        GameTooltip:AddDoubleLine("|cffffffffDrag|r",        "reposition around the minimap",               1,1,1, 0.85,0.85,0.85)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("|cff888866/wb minimap|r to restore after hiding.", 0.78,0.65,0.25)
+        GameTooltip:Show()
+    end)
+    btn:SetScript("OnLeave", function() GameTooltip:Hide() end)
+
+    btn:SetScript("OnClick", function(self, button)
+        if button == "RightButton" then
+            GetDB().ui.minimap.hide = true
+            UpdateMinimapButtonVisibility()
+            Print("Minimap button hidden. Type |cffd4af37/wb minimap|r to bring it back.")
+            return
+        end
+        if ui.frame and ui.frame:IsShown() then
+            ui.frame:Hide()
+        else
+            ShowWardrobeUI()
+        end
+    end)
+
+    -- Drag-to-reposition. OnUpdate is only attached while a drag is in
+    -- progress; the angle is recomputed from the cursor's position
+    -- relative to the minimap centre on every frame, so the button
+    -- follows the cursor around the rim smoothly.
+    btn:SetScript("OnDragStart", function(self)
+        self:LockHighlight()
+        self:SetScript("OnUpdate", function(self)
+            local mx, my = Minimap:GetCenter()
+            if not mx then return end
+            local scale = Minimap:GetEffectiveScale()
+            local px, py = GetCursorPosition()
+            px, py = px / scale, py / scale
+            GetDB().ui.minimap.angle = math.deg(math.atan2(py - my, px - mx))
+            PositionMinimapButton()
+        end)
+    end)
+    btn:SetScript("OnDragStop", function(self)
+        self:SetScript("OnUpdate", nil)
+        self:UnlockHighlight()
+    end)
+
+    minimapButton = btn
+    PositionMinimapButton()
+    UpdateMinimapButtonVisibility()
+end
 
 -------------------------------------------------------------------------------
 -- SLASH COMMANDS
@@ -2889,12 +3023,24 @@ SlashCmdList["WARDROBE"] = function(msg)
             GetDB().npcNames[n:gsub("^%l", string.upper)] = true
             Print("Registered NPC name: " .. n)
         end
+    elseif msg == "minimap" then
+        local m = GetDB().ui.minimap
+        m.hide = not m.hide
+        UpdateMinimapButtonVisibility()
+        Print("Minimap button " .. (m.hide and "hidden" or "shown") .. ".")
+    elseif msg == "minimap reset" then
+        local m = GetDB().ui.minimap
+        m.angle = 210
+        m.hide  = false
+        PositionMinimapButton()
+        UpdateMinimapButtonVisibility()
+        Print("Minimap button position reset.")
     elseif msg == "" or msg == "show" then
         if ui.frame and ui.frame:IsShown() then ui.frame:Hide() else ShowWardrobeUI() end
     else
         Print("|cffd4af37" .. ADDON_NAME .. "|r v" .. ADDON_VERSION ..
               " by " .. ADDON_AUTHOR .. "  -  " .. ADDON_URL)
-        Print("Commands: /wb (toggle), /wb rescan, /wb reset, /wb debug, /wb npcname <Name>")
+        Print("Commands: /wb (toggle), /wb rescan, /wb reset, /wb debug, /wb minimap [reset], /wb npcname <Name>")
     end
 end
 

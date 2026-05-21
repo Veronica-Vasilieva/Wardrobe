@@ -1,5 +1,35 @@
 # Wardrobe — changelog
 
+## [1.16] - 2026-05-21
+
+Day 6 of the ROADMAP polish sprint.
+
+### Added
+- **Minimap button** (roadmap item #24). A Wardrobe icon sits on the
+  minimap rim so you can open the wardrobe to browse and stage outfits
+  without being at the Warpweaver. Apply chains still require the NPC,
+  but inspection, favouriting, and outfit-building work anywhere.
+  - **Left-click** toggles the wardrobe window.
+  - **Right-click** hides the minimap button. `/wb minimap` brings it
+    back.
+  - **Drag** the button around the minimap to reposition it; the angle
+    is saved per account.
+  - **Tooltip** lists the click hints and the slash command to restore
+    a hidden button, so the feature stays discoverable.
+- **New slash subcommands**:
+  - `/wb minimap` — toggle the button's visibility.
+  - `/wb minimap reset` — re-centre the button to its default angle
+    (210°, lower-left of the minimap) and unhide it if it was hidden.
+- The `?` info badge in the top-right of the wardrobe now lists the
+  new minimap commands alongside the existing slash references.
+
+### Internal
+- New `db.ui.minimap = { hide, angle }` sub-table. Backfilled in
+  `GetDB()` so old saves get the new keys on first load.
+- Self-contained implementation — no LibDBIcon/LibDataBroker
+  dependency. Keeps the addon a single-file zero-dep package and
+  avoids adding library directories to the release zip.
+
 ## [1.15] - 2026-05-20
 
 ### Added

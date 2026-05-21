@@ -115,9 +115,11 @@ Cosmetic but raises the perceived quality.
 
 Bigger value adds. Each warrants design discussion before coding.
 
-24. **Minimap button.** [M]
-    *Why:* Browse / build outfits without being at the NPC. Apply still
-    requires the NPC, but inspection doesn't.
+24. ~~**Minimap button.**~~ ✅ Done in v1.16. Self-contained (no
+    LibDBIcon dependency), draggable around the minimap rim, left-click
+    toggles the wardrobe, right-click hides the button. Position saved
+    as `db.ui.minimap.angle` (degrees). Hidden state restored via
+    `/wb minimap`; `/wb minimap reset` re-centres.
 25. **Random outfit generator.** [M]
     *Why:* Fun + helps players discover items they've forgotten about.
     Button: "Surprise me" rolls a random appearance per slot, stages
@@ -212,10 +214,11 @@ panel, localization) can be picked up individually.
 
 ## Status
 
-**Shipped so far (12 items + 1 extra):**
+**Shipped so far (13 items + 1 extra):**
 - Tier 1 — Hardening: #1, #2, #3, #4, #5
 - Tier 2 — Quality-of-life: #7, #8, #10, #13, #14
 - Tier 3 — UI polish: #19
+- Tier 4 — New features: #24
 - Tier 5 — Architecture: #33
 - **Extras** (not originally listed): right-click slot tab to clear
   that slot's preview (v1.15)
