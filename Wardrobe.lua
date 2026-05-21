@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.14
+-- Wardrobe  v1.15
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.14"
+local ADDON_VERSION = "1.15"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -1466,6 +1466,9 @@ local function CreateMainFrame()
         GameTooltip:AddLine("|cffffd700In-window controls:|r")
         GameTooltip:AddLine("|cffaaaaaaLeft-click item|r   |cff666666stage on the doll|r")
         GameTooltip:AddLine("|cffaaaaaaRight-click item|r   |cff666666apply immediately|r")
+        GameTooltip:AddLine("|cffaaaaaaClick star|r   |cff666666favourite (pin to top)|r")
+        GameTooltip:AddLine("|cffaaaaaaLeft-click slot tab|r   |cff666666switch slots|r")
+        GameTooltip:AddLine("|cffaaaaaaRight-click slot tab|r   |cff666666clear that slot's preview|r")
         GameTooltip:AddLine("|cffaaaaaaLeft-drag doll|r   |cff666666rotate model|r")
         GameTooltip:AddLine("|cffaaaaaaRight-drag doll|r   |cff666666pan vertically|r")
         GameTooltip:AddLine("|cffaaaaaaMouse wheel on doll|r   |cff666666zoom in/out|r")
@@ -2165,7 +2168,33 @@ local function BuildSlotTabs()
         count:SetTextColor(0.6, 0.6, 0.7)
         tab.count = count
 
-        tab:SetScript("OnClick", function() ui.SelectSlot(s.id) end)
+        tab:RegisterForClicks("LeftButtonUp", "RightButtonUp")
+        tab:SetScript("OnClick", function(self, button)
+            if button == "RightButton" then
+                -- Right-click clears this slot's staged preview only,
+                -- leaving previews on other slots untouched. No-op if
+                -- nothing is staged here.
+                if previewSlots[s.id] ~= nil then
+                    ui.ClearSlotPreview(s.id)
+                end
+            else
+                ui.SelectSlot(s.id)
+            end
+        end)
+        tab:SetScript("OnEnter", function(self)
+            GameTooltip:SetOwner(self, "ANCHOR_RIGHT")
+            GameTooltip:SetText(s.label)
+            local list = GetCharDB().collection[s.id]
+            local n = list and #list or 0
+            GameTooltip:AddLine(n .. " appearance" .. (n == 1 and "" or "s") .. " cached",
+                                0.7, 0.7, 0.75)
+            if previewSlots[s.id] ~= nil then
+                GameTooltip:AddLine(" ")
+                GameTooltip:AddLine("|cffffd200Right-click|r to clear the staged preview for this slot.", 1, 1, 1, true)
+            end
+            GameTooltip:Show()
+        end)
+        tab:SetScript("OnLeave", function() GameTooltip:Hide() end)
         tab.slotId = s.id
         ui.slotTabs[s.id] = tab
     end
@@ -2426,6 +2455,17 @@ end
 function ui.PreviewItem(slotId, itemData)
     if not (slotId and itemData and itemData.entry) then return end
     previewSlots[slotId] = itemData.entry
+    ui.RefreshDoll()
+    ui.UpdatePreviewLabel()
+end
+
+-- Clear the staged preview for a single slot, leaving previews on other
+-- slots intact. Triggered by right-clicking a slot tab. Refreshes the
+-- doll (so the slot reverts to its currently-equipped look), the
+-- preview label, and the tab badges.
+function ui.ClearSlotPreview(slotId)
+    if slotId == nil or previewSlots[slotId] == nil then return end
+    previewSlots[slotId] = nil
     ui.RefreshDoll()
     ui.UpdatePreviewLabel()
 end

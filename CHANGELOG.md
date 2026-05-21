@@ -1,5 +1,26 @@
 # Wardrobe — changelog
 
+## [1.15] - 2026-05-20
+
+### Added
+- **Right-click a slot tab to clear that slot's preview**, leaving
+  staged previews on other slots untouched. Reset Preview is still
+  the all-or-nothing escape hatch; this fills the gap when you only
+  want to undo one slot.
+- **Slot tab tooltips** (new). Hover any tab in the left column to
+  see the slot's label and cached-appearance count. When the slot
+  has a staged preview, the tooltip also surfaces the right-click
+  shortcut so the feature is discoverable.
+- The `?` info badge in the top-right of the wardrobe now lists
+  the new slot-tab clicks alongside the existing item and doll
+  controls, plus the favourites star (was missing from the v1.13
+  badge update).
+
+### Internal
+- New `ui.ClearSlotPreview(slotId)` — single-slot variant of the
+  Reset Preview wipe. Refreshes the doll, preview label, and tab
+  badges so all three propagate the cleared state.
+
 ## [1.14] - 2026-05-20
 
 Day 4 of the ROADMAP polish sprint.

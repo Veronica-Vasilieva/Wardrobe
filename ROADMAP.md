@@ -212,11 +212,13 @@ panel, localization) can be picked up individually.
 
 ## Status
 
-**Shipped so far (12 items):**
+**Shipped so far (12 items + 1 extra):**
 - Tier 1 — Hardening: #1, #2, #3, #4, #5
 - Tier 2 — Quality-of-life: #7, #8, #10, #13, #14
 - Tier 3 — UI polish: #19
 - Tier 5 — Architecture: #33
+- **Extras** (not originally listed): right-click slot tab to clear
+  that slot's preview (v1.15)
 
 ---
 
