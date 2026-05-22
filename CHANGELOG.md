@@ -1,5 +1,50 @@
 # Wardrobe — changelog
 
+## [1.17] - 2026-05-22
+
+Day 7 of the ROADMAP polish sprint.
+
+### Added
+- **Right-click context menu on rows** (roadmap item #11). Right-
+  clicking any row in the wardrobe list now opens a small purple/gold
+  menu anchored to the cursor with five actions:
+  - **Apply** — replaces the old "right-click immediately applies"
+    convention. Same action, but discoverable and one click away.
+  - **Try On (preview)** — mirrors the left-click preview so the
+    behaviour is named in the menu, not implied.
+  - **Favourite / Unfavourite** — toggles the favourite flag (label
+    flips based on current state). Functionally equivalent to clicking
+    the gold `*` widget on the row.
+  - **Hide from List / Unhide** — new per-character "I don't want to
+    see this in the wardrobe" toggle. Hidden entries are filtered out
+    of the list by default; turn on **Show hidden items** in the doll
+    column to see them again (dimmed) and unhide via the same menu.
+  - **Cancel** — closes the menu.
+- **Hide from List** filter. Per-character `char.hiddenEntries`
+  (account-wide `db.ui.showHidden` toggle). Lets you bury enchant
+  variants you'll never use, low-quality starter gear, etc., without
+  losing the data — just unhide later from the same context menu.
+- **"Show hidden items" checkbox** in the doll column (third toggle,
+  below "Hide applied items"). When on, hidden rows render in the
+  list with a desaturated icon, washed-out text, and a `(hidden)`
+  suffix on the quality label so they're visually obvious.
+- The `?` info badge now says "Right-click item — menu: Apply / Try
+  On / Favourite / Hide" instead of "apply immediately", and the
+  preview-label hint at the bottom reads "right-click for menu".
+
+### Internal
+- New `char.hiddenEntries = {[entry]=true}` per-character set, with
+  matching backfill in `GetCharDB()` for old saves.
+- New `db.ui.showHidden` account-wide toggle, backfilled in `GetDB()`.
+- New `ui.ToggleHidden(entry)` mirroring `ui.ToggleFavourite`.
+- New `ui.ShowRowContextMenu(slotId, itemData)` builds a single shared
+  menu frame (5 reusable buttons + header) reused across rows.
+- Menu closes on outside-click via OnUpdate polling of
+  `IsMouseButtonDown` rather than a full-screen click-eater, so the
+  closing click still reaches the underlying widget — right-clicking
+  row A then row B opens the menu on B in a single click instead of
+  needing to close-then-click.
+
 ## [1.16] - 2026-05-21
 
 Day 6 of the ROADMAP polish sprint.

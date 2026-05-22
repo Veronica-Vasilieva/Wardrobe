@@ -51,6 +51,12 @@ server's Manage Sets feature.
 - **Custom background art** behind the wardrobe window (purple/gold
   transmog scene). Column backdrops are kept at moderate alpha so the
   art is visible without sacrificing foreground readability.
+- **Right-click context menu on rows** — Apply, Try On (preview),
+  Favourite/Unfavourite, and **Hide from List**, in one place. The
+  Hide-from-List option buries entries you never want to see (low-tier
+  starter gear, irrelevant enchants); turn on **Show hidden items** in
+  the doll column to see them again, dimmed, and unhide via the same
+  menu.
 - **Minimap button** so you can open the wardrobe to browse, favourite,
   and stage outfits anywhere — no need to be at the Warpweaver for
   inspection. Left-click toggles, right-click hides, drag-around-rim

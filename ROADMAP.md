@@ -63,9 +63,14 @@ Visible improvements players will notice. Each is contained.
 10. ~~**Quick clear button on search box.**~~ ✅ Done in v1.14. Small
     "X" inside the search box's right edge, visible only when the
     box has text. Click empties the search and unfocuses.
-11. **Right-click context menu on rows.** [M]
-    *Why:* Apply / Try On / Favourite / Hide from List in one place
-    instead of needing to know the shift/right-click convention.
+11. ~~**Right-click context menu on rows.**~~ ✅ Done in v1.17. Five
+    entries (Apply / Try On / Favourite-toggle / Hide-from-List /
+    Cancel), purple-gold themed, anchored to the cursor, closes on
+    outside click via OnUpdate polling. Replaces the old "right-click
+    applies immediately" shortcut with a discoverable menu. Includes a
+    new per-character `hiddenEntries` set and `db.ui.showHidden`
+    toggle (third doll-column checkbox) so Hide-from-List has a
+    visible un-hide path.
 12. **Keyboard navigation.** [M]
     *Why:* Tab to cycle slot tabs, Up/Down to move within the list,
     Enter to preview. Useful for power users.
@@ -214,9 +219,9 @@ panel, localization) can be picked up individually.
 
 ## Status
 
-**Shipped so far (13 items + 1 extra):**
+**Shipped so far (14 items + 1 extra):**
 - Tier 1 — Hardening: #1, #2, #3, #4, #5
-- Tier 2 — Quality-of-life: #7, #8, #10, #13, #14
+- Tier 2 — Quality-of-life: #7, #8, #10, #11, #13, #14
 - Tier 3 — UI polish: #19
 - Tier 4 — New features: #24
 - Tier 5 — Architecture: #33

@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.16
+-- Wardrobe  v1.17
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License — see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -21,7 +21,7 @@
 
 local ADDON         = "Wardrobe"
 local ADDON_NAME    = "Wardrobe"
-local ADDON_VERSION = "1.16"
+local ADDON_VERSION = "1.17"
 local ADDON_AUTHOR  = "Veronica-Vasilieva"
 local ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 local ADDON_IDENT   = ADDON_NAME .. " v" .. ADDON_VERSION .. " by " .. ADDON_AUTHOR
@@ -113,6 +113,7 @@ local DB_DEFAULTS = {
         qualityFilter  = 0,
         showBackground = true,
         hideApplied    = false,
+        showHidden     = false,
         minimap        = { hide = false, angle = 210 },
     },
     debug        = false,
@@ -142,6 +143,7 @@ local function GetDB()
     if WardrobeDB.ui.qualityFilter  == nil then WardrobeDB.ui.qualityFilter  = 0     end
     if WardrobeDB.ui.showBackground == nil then WardrobeDB.ui.showBackground = true  end
     if WardrobeDB.ui.hideApplied    == nil then WardrobeDB.ui.hideApplied    = false end
+    if WardrobeDB.ui.showHidden     == nil then WardrobeDB.ui.showHidden     = false end
     -- Minimap button state (v1.16+). Saves are nested so old toons that
     -- already had a ui table get a fresh defaults object on first read.
     WardrobeDB.ui.minimap = WardrobeDB.ui.minimap or {}
@@ -167,15 +169,17 @@ local function GetCharDB()
             collection  = {},   -- [slotId] = { {entry, name, icon, quality, link}, ... }
             outfits     = {},   -- array of { name, slots = {[slotId]=entry} }
             serverSets  = {},   -- array of { name }, scanned from server-side Manage sets
-            favourites  = {},   -- [entry] = true. Numeric entries for items, string entries for enchants.
-            applied     = {},   -- [slotId] = entry currently applied via Wardrobe. Used by the "Hide applied" filter.
+            favourites    = {},   -- [entry] = true. Numeric entries for items, string entries for enchants.
+            applied       = {},   -- [slotId] = entry currently applied via Wardrobe. Used by the "Hide applied" filter.
+            hiddenEntries = {},   -- [entry] = true. Per-row "Hide from List" — filtered out unless db.ui.showHidden is on.
         }
     end
     -- Backfill for chars saved before each field was added.
-    if not db.chars[key].outfits    then db.chars[key].outfits    = {} end
-    if not db.chars[key].serverSets then db.chars[key].serverSets = {} end
-    if not db.chars[key].favourites then db.chars[key].favourites = {} end
-    if not db.chars[key].applied    then db.chars[key].applied    = {} end
+    if not db.chars[key].outfits       then db.chars[key].outfits       = {} end
+    if not db.chars[key].serverSets    then db.chars[key].serverSets    = {} end
+    if not db.chars[key].favourites    then db.chars[key].favourites    = {} end
+    if not db.chars[key].applied       then db.chars[key].applied       = {} end
+    if not db.chars[key].hiddenEntries then db.chars[key].hiddenEntries = {} end
     return db.chars[key]
 end
 
@@ -1478,7 +1482,7 @@ local function CreateMainFrame()
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("|cffffd700In-window controls:|r")
         GameTooltip:AddLine("|cffaaaaaaLeft-click item|r   |cff666666stage on the doll|r")
-        GameTooltip:AddLine("|cffaaaaaaRight-click item|r   |cff666666apply immediately|r")
+        GameTooltip:AddLine("|cffaaaaaaRight-click item|r   |cff666666menu: Apply / Try On / Favourite / Hide|r")
         GameTooltip:AddLine("|cffaaaaaaClick star|r   |cff666666favourite (pin to top)|r")
         GameTooltip:AddLine("|cffaaaaaaLeft-click slot tab|r   |cff666666switch slots|r")
         GameTooltip:AddLine("|cffaaaaaaRight-click slot tab|r   |cff666666clear that slot's preview|r")
@@ -1766,8 +1770,13 @@ local function CreateMainFrame()
         row:SetScript("OnClick", function(self, button)
             if not (self.itemData and ui.currentSlot) then return end
             if button == "RightButton" then
-                -- Right-click: apply immediately, skip preview
-                ApplyEntry(ui.currentSlot, self.itemData.entry)
+                -- Right-click: open the row context menu (Apply / Try On /
+                -- Favourite / Hide from List). Replaces the old "right-
+                -- click immediately applies" shortcut — that's now the
+                -- Apply entry in the menu, one click further but visible.
+                if ui.ShowRowContextMenu then
+                    ui.ShowRowContextMenu(ui.currentSlot, self.itemData)
+                end
             else
                 -- Left-click: preview only (TryOn on doll, stage for batch Apply Preview)
                 if ui.PreviewItem then
@@ -2062,6 +2071,38 @@ local function CreateMainFrame()
     appChk:SetScript("OnLeave", function() GameTooltip:Hide() end)
     ui.appChk = appChk
 
+    -- Show-hidden toggle. The per-row "Hide from List" right-click option
+    -- removes individual entries from the wardrobe; turning this on
+    -- surfaces them back, dimmed, so you can unhide them via the same
+    -- context menu. Account-wide setting (saved in db.ui.showHidden).
+    --
+    -- Layout: sits on the same row as the Background-art checkbox, to its
+    -- LEFT. Anchoring below appChk would push it down into the "Restore
+    -- Original" button. The auto-generated text label is flipped to the
+    -- LEFT of the box so it doesn't run into bgChk's box on the right.
+    local hidChk = CreateFrame("CheckButton", "WardrobeShowHiddenChk", dollCol, "UICheckButtonTemplate")
+    hidChk:SetSize(22, 22)
+    hidChk:SetPoint("TOPRIGHT", bgChk, "TOPLEFT", -8, 0)
+    local hidText = _G["WardrobeShowHiddenChkText"]
+    hidText:SetText("Show hidden items")
+    hidText:SetFontObject("GameFontNormalSmall")
+    hidText:ClearAllPoints()
+    hidText:SetPoint("RIGHT", hidChk, "LEFT", -4, 1)
+    hidText:SetJustifyH("RIGHT")
+    hidChk:SetScript("OnClick", function(self)
+        GetDB().ui.showHidden = self:GetChecked() and true or false
+        if ui.RefreshList then ui.RefreshList() end
+    end)
+    hidChk:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Show hidden items")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("When unchecked, items you right-clicked as 'Hide from List' are filtered out of the wardrobe. Check this to see them again (dimmed) so you can unhide them via the same context menu.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    hidChk:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    ui.hidChk = hidChk
+
     -- ===== Bottom action bar =====
     local bar = CreateFrame("Frame", nil, f)
     bar:SetPoint("BOTTOMLEFT", 10, 10)
@@ -2260,12 +2301,14 @@ function ui.RefreshList()
     if ui._refreshing then return end
     ui._refreshing = true
 
-    local char        = GetCharDB()
-    local items       = (char.collection[ui.currentSlot] or {})
-    local filter      = (ui.search:GetText() or ""):lower()
-    local qf          = GetDB().ui.qualityFilter
-    local hideApplied = GetDB().ui.hideApplied
+    local char         = GetCharDB()
+    local items        = (char.collection[ui.currentSlot] or {})
+    local filter       = (ui.search:GetText() or ""):lower()
+    local qf           = GetDB().ui.qualityFilter
+    local hideApplied  = GetDB().ui.hideApplied
+    local showHidden   = GetDB().ui.showHidden
     local appliedEntry = char.applied and char.applied[ui.currentSlot]
+    local hidden       = char.hiddenEntries or {}
     local filtered = {}
     for _, it in ipairs(items) do
         -- Lazy refresh: client may not have had item data cached at scan time.
@@ -2281,7 +2324,10 @@ function ui.RefreshList()
         local passQuality = qf == 0 or (it.quality or 1) >= qf
         local passSearch  = filter == "" or (it.name or ""):lower():find(filter, 1, true)
         local passApplied = not (hideApplied and appliedEntry == it.entry)
-        if passQuality and passSearch and passApplied then
+        -- "Hide from List" filter: drop hidden rows entirely unless the
+        -- showHidden toggle is on, in which case they're rendered dimmed.
+        local passHidden  = showHidden or not hidden[it.entry]
+        if passQuality and passSearch and passApplied and passHidden then
             table.insert(filtered, it)
         end
     end
@@ -2324,19 +2370,28 @@ function ui.RefreshList()
         local row = ui.rows[i]
         local it = filtered[i + offset]
         if it then
+            local isHidden = hidden[it.entry] and true or false
             row.icon:SetTexture(it.icon)
+            row.icon:SetDesaturated(isHidden)
             local c = QUALITY_COLOR[it.quality or 1] or {1,1,1}
             row.nameFs:SetText(it.name or "?")
             if rowsAreEnchant then
                 -- Enchants have no item quality (everything falls to "Common"
                 -- which is misleading). Show "Enchant" in a gold tint instead.
                 row.nameFs:SetTextColor(0.95, 0.85, 0.45)
-                row.qualFs:SetText("Enchant")
+                row.qualFs:SetText(isHidden and "Enchant (hidden)" or "Enchant")
                 row.qualFs:SetTextColor(0.75, 0.60, 0.25)
             else
                 row.nameFs:SetTextColor(c[1], c[2], c[3])
-                row.qualFs:SetText(QUALITY_NAME[it.quality or 1] or "")
+                row.qualFs:SetText((QUALITY_NAME[it.quality or 1] or "") ..
+                                   (isHidden and " (hidden)" or ""))
                 row.qualFs:SetTextColor(c[1]*0.8, c[2]*0.8, c[3]*0.8)
+            end
+            -- When the row is hidden (and we're showing hidden), wash the
+            -- whole row out so the hidden state is obvious at a glance.
+            if isHidden then
+                row.nameFs:SetTextColor(0.55, 0.55, 0.55)
+                row.qualFs:SetTextColor(0.50, 0.40, 0.40)
             end
             -- Star: gold when favourited, dim grey otherwise.
             if favs[it.entry] then
@@ -2411,7 +2466,7 @@ function ui.UpdatePreviewLabel()
         if v == "HIDE" then nHide = nHide + 1 else nTransmog = nTransmog + 1 end
     end
     if nTransmog == 0 and nHide == 0 then
-        ui.previewLbl:SetText("Previewing current look\nLeft-click to stage, right-click to apply")
+        ui.previewLbl:SetText("Previewing current look\nLeft-click to stage, right-click for menu")
         ui.previewLbl:SetTextColor(0.6, 0.6, 0.65)
     else
         local parts = {}
@@ -2497,6 +2552,175 @@ function ui.ToggleFavourite(entry)
         char.favourites[entry] = true
     end
     ui.RefreshList()
+end
+
+-- Toggle the per-row "Hide from List" flag. Hidden entries are filtered
+-- out of the wardrobe unless the "Show hidden items" doll-column toggle
+-- is on. Per-character (different alts have different "I don't want to
+-- see this" lists). Auto-disables the "applied" / "favourite" overrides
+-- intentionally — hide is a stronger signal.
+function ui.ToggleHidden(entry)
+    if entry == nil then return end
+    local char = GetCharDB()
+    char.hiddenEntries = char.hiddenEntries or {}
+    if char.hiddenEntries[entry] then
+        char.hiddenEntries[entry] = nil
+    else
+        char.hiddenEntries[entry] = true
+    end
+    ui.RefreshList()
+end
+
+-------------------------------------------------------------------------------
+-- ROW CONTEXT MENU (right-click)
+-------------------------------------------------------------------------------
+-- A single shared menu reused across all rows; populated per-row in
+-- ui.ShowRowContextMenu. Closes when the mouse goes down outside the menu
+-- (polled via OnUpdate). Doesn't sit behind a click-eater frame so the
+-- click that closes the menu still reaches the underlying widget — a user
+-- can right-click row A to open the menu, then right-click row B to
+-- close-and-reopen-on-B in a single click.
+
+local rowMenu
+
+local function HideRowMenu()
+    if rowMenu then rowMenu:Hide() end
+end
+
+local function CreateRowMenu()
+    if rowMenu then return rowMenu end
+    local m = CreateFrame("Frame", "WardrobeRowContextMenu", UIParent)
+    m:SetFrameStrata("FULLSCREEN_DIALOG")
+    m:SetWidth(190)
+    m:EnableMouse(true)
+    MakeBackdrop(m, "Interface\\DialogFrame\\UI-DialogBox-Background-Dark")
+    m:SetBackdropColor(0.08, 0.05, 0.12, 0.97)
+    m:SetBackdropBorderColor(0.40, 0.25, 0.70, 1)
+    m:Hide()
+
+    -- Header: small item icon + quality-coloured name. Anchored under
+    -- the top padding so the divider below it has a known offset.
+    m.headIcon = m:CreateTexture(nil, "ARTWORK")
+    m.headIcon:SetSize(16, 16)
+    m.headIcon:SetPoint("TOPLEFT", m, "TOPLEFT", 8, -8)
+
+    m.headFs = m:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+    m.headFs:SetPoint("LEFT",  m.headIcon, "RIGHT",   6, 0)
+    m.headFs:SetPoint("RIGHT", m,          "RIGHT", -10, 0)
+    m.headFs:SetJustifyH("LEFT")
+    m.headFs:SetWordWrap(false)
+
+    -- Gold divider under the header
+    local div = m:CreateTexture(nil, "OVERLAY")
+    div:SetTexture("Interface\\Buttons\\WHITE8X8")
+    div:SetVertexColor(0.55, 0.42, 0.18, 0.7)
+    div:SetHeight(1)
+    div:SetPoint("LEFT",  m, "LEFT",   8, 0)
+    div:SetPoint("RIGHT", m, "RIGHT", -8, 0)
+    div:SetPoint("TOP",   m.headIcon, "BOTTOM", 0, -5)
+    m.div = div
+
+    -- Reusable row buttons; max 5 entries.
+    m.buttons = {}
+    for i = 1, 5 do
+        local b = CreateFrame("Button", nil, m)
+        b:SetHeight(20)
+        local hi = b:CreateTexture(nil, "BACKGROUND")
+        hi:SetAllPoints()
+        hi:SetTexture("Interface\\Buttons\\WHITE8X8")
+        hi:SetVertexColor(0.45, 0.30, 0.65, 0)
+        b.hi = hi
+        local fs = b:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        fs:SetPoint("LEFT", 6, 0)
+        fs:SetJustifyH("LEFT")
+        b.fs = fs
+        b:SetScript("OnEnter", function(self) self.hi:SetVertexColor(0.45,0.30,0.65,0.55) end)
+        b:SetScript("OnLeave", function(self) self.hi:SetVertexColor(0.45,0.30,0.65,0)    end)
+        b:Hide()
+        m.buttons[i] = b
+    end
+
+    -- Outside-click closer (poll only while shown).
+    m:SetScript("OnShow", function(self)
+        self:SetScript("OnUpdate", function(self)
+            if (IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton"))
+               and not MouseIsOver(self) then
+                self:Hide()
+            end
+        end)
+    end)
+    m:SetScript("OnHide", function(self)
+        self:SetScript("OnUpdate", nil)
+        for _, b in ipairs(self.buttons) do b:Hide() end
+    end)
+
+    rowMenu = m
+    return m
+end
+
+function ui.ShowRowContextMenu(slotId, itemData)
+    if not (slotId and itemData) then return end
+    local m = CreateRowMenu()
+    local char = GetCharDB()
+    char.hiddenEntries = char.hiddenEntries or {}
+    char.favourites    = char.favourites    or {}
+    local isFav    = char.favourites[itemData.entry]    and true or false
+    local isHidden = char.hiddenEntries[itemData.entry] and true or false
+
+    m.headIcon:SetTexture(itemData.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
+    local qc = QUALITY_COLOR[itemData.quality or 1] or {1,1,1}
+    m.headFs:SetText(string.format("|cff%02x%02x%02x%s|r",
+        qc[1]*255, qc[2]*255, qc[3]*255, itemData.name or "?"))
+
+    local entries = {
+        { label  = "Apply",
+          colour = {1.00, 0.95, 0.60},
+          action = function() ApplyEntry(slotId, itemData.entry) end },
+        { label  = "Try On (preview)",
+          colour = {0.85, 0.85, 1.00},
+          action = function()
+              if ui.PreviewItem then ui.PreviewItem(slotId, itemData) end
+          end },
+        { label  = isFav and "Unfavourite" or "Favourite",
+          colour = {1.00, 0.85, 0.30},
+          action = function() ui.ToggleFavourite(itemData.entry) end },
+        { label  = isHidden and "Unhide (restore to list)" or "Hide from List",
+          colour = {0.85, 0.55, 0.55},
+          action = function() ui.ToggleHidden(itemData.entry) end },
+        { label  = "Cancel",
+          colour = {0.65, 0.65, 0.70},
+          action = function() end },
+    }
+    for i, b in ipairs(m.buttons) do
+        local e = entries[i]
+        if e then
+            b.fs:SetText(e.label)
+            b.fs:SetTextColor(e.colour[1], e.colour[2], e.colour[3])
+            b:SetScript("OnClick", function()
+                e.action()
+                HideRowMenu()
+            end)
+            b:ClearAllPoints()
+            b:SetPoint("LEFT",  m, "LEFT",   6, 0)
+            b:SetPoint("RIGHT", m, "RIGHT", -6, 0)
+            b:SetPoint("TOP",   m.div, "BOTTOM", 0, -2 - (i-1)*20)
+            b:Show()
+        else
+            b:Hide()
+        end
+    end
+    -- Height = top pad 8 + icon 16 + div pad 5 + 1 div + 2 top inset
+    --        + 5 entries * 20 + bottom pad 8
+    m:SetHeight(8 + 16 + 5 + 1 + 2 + #entries * 20 + 8)
+
+    -- Anchor under the cursor. Using BOTTOMLEFT means the menu grows
+    -- upward from the click — feels natural when right-clicking near
+    -- the bottom of the list.
+    local scale  = UIParent:GetEffectiveScale()
+    local cx, cy = GetCursorPosition()
+    m:ClearAllPoints()
+    m:SetPoint("BOTTOMLEFT", UIParent, "BOTTOMLEFT", cx/scale, cy/scale)
+    m:Show()
 end
 
 function ui.RebuildOutfitMenu()
@@ -2777,6 +3001,7 @@ function ShowWardrobeUI()
     ui.ApplyBackgroundPref()
     -- Sync the Hide-applied checkbox to its saved state on every show.
     if ui.appChk then ui.appChk:SetChecked(GetDB().ui.hideApplied and true or false) end
+    if ui.hidChk then ui.hidChk:SetChecked(GetDB().ui.showHidden and true or false) end
     ui.RefreshDoll()
     ui.RefreshList()
     -- Pre-warm any unresolved item cache entries — without this, items the
