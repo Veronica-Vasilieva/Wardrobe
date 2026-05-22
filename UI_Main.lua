@@ -18,6 +18,7 @@ local GetDB         = W.GetDB
 local GetCharDB     = W.GetCharDB
 local Print         = W.Print
 local MakeBackdrop  = W.MakeBackdrop
+local L             = W.L
 local UI_WIDTH      = W.UI_WIDTH
 local UI_HEIGHT     = W.UI_HEIGHT
 local DOLL_WIDTH    = W.DOLL_WIDTH
@@ -56,11 +57,11 @@ function W.CreateMainFrame()
     -- Title bar
     local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormalLarge")
     title:SetPoint("TOP", 0, -12)
-    title:SetText("|cffd4af37Wardrobe|r")
+    title:SetText("|cffd4af37" .. L["Wardrobe"] .. "|r")
 
     local subtitle = f:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     subtitle:SetPoint("TOP", 0, -32)
-    subtitle:SetText("Project Ebonhold transmog browser  |  v" ..
+    subtitle:SetText(L["Project Ebonhold transmog browser"] .. "  |  v" ..
         W.ADDON_VERSION .. " by |cffd4af37" .. W.ADDON_AUTHOR .. "|r")
     subtitle:SetTextColor(0.7, 0.7, 0.75)
     ui.subtitle = subtitle
@@ -69,6 +70,31 @@ function W.CreateMainFrame()
     local close = CreateFrame("Button", nil, f, "UIPanelCloseButton")
     close:SetPoint("TOPRIGHT", -2, -2)
     close:SetScript("OnClick", function() f:Hide() end)
+
+    -- Settings (gear) button. Sits to the LEFT of the info badge. Opens the
+    -- v1.22 settings dialog with every persistent toggle grouped by section.
+    local gearBtn = CreateFrame("Button", nil, f)
+    gearBtn:SetSize(22, 22)
+    gearBtn:SetPoint("TOPRIGHT", -56, -10)
+    gearBtn:EnableMouse(true)
+    local gearBg = gearBtn:CreateTexture(nil, "BACKGROUND")
+    gearBg:SetAllPoints()
+    gearBg:SetTexture("Interface\\Buttons\\WHITE8X8")
+    gearBg:SetVertexColor(0.18, 0.10, 0.30, 0.85)
+    local gearFs = gearBtn:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+    gearFs:SetPoint("CENTER", 0, 0)
+    gearFs:SetText("|cffffd700[S]|r")
+    gearBtn:SetScript("OnClick", function()
+        if W.ToggleSettingsFrame then W.ToggleSettingsFrame() end
+    end)
+    gearBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_LEFT")
+        GameTooltip:SetText("Settings")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Open the Wardrobe settings panel. Also opens with |cffffd200/wb settings|r.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    gearBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     -- "?" info badge next to the close button. Hover -> addon info, slash
     -- command list, license, and project URL.
@@ -93,6 +119,7 @@ function W.CreateMainFrame()
         GameTooltip:AddLine(" ")
         GameTooltip:AddLine("|cffffd700Slash commands:|r")
         GameTooltip:AddLine("|cffaaaaaa/wb|r |cff888866 or |r|cffaaaaaa/wardrobe|r   |cff666666open/close|r")
+        GameTooltip:AddLine("|cffaaaaaa/wb settings|r   |cff666666open the settings panel|r")
         GameTooltip:AddLine("|cffaaaaaa/wb rescan|r   |cff666666rescan collection + server sets|r")
         GameTooltip:AddLine("|cffaaaaaa/wb reset|r   |cff666666wipe all saved data|r")
         GameTooltip:AddLine("|cffaaaaaa/wb debug|r   |cff666666toggle verbose chat logging|r")
@@ -252,7 +279,7 @@ function W.CreateMainFrame()
 
     local searchLabel = right:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
     searchLabel:SetPoint("BOTTOMLEFT", search, "TOPLEFT", -2, 2)
-    searchLabel:SetText("Search")
+    searchLabel:SetText(L["Search"])
 
     -- Quality filter dropdown (simple cycle button)
     local qf = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
@@ -265,6 +292,48 @@ function W.CreateMainFrame()
         ui.RefreshList()
     end)
     ui.qualityBtn = qf
+
+    -- Sort dropdown (v1.20). Sits BELOW the quality button on a second
+    -- filter row so the existing top row stays uncluttered and there's room
+    -- next to it for the v1.21 missing-collections filter.
+    local sortBtn = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
+    sortBtn:SetSize(120, 22)
+    sortBtn:SetPoint("TOPLEFT", qf, "BOTTOMLEFT", 0, -4)
+    ui.sortBtn = sortBtn
+
+    -- Sort popup menu. Same purple-bordered look as the outfit dropdown.
+    local sortMenu = CreateFrame("Frame", nil, right)
+    sortMenu:SetSize(160, 4)
+    sortMenu:SetPoint("TOPLEFT", sortBtn, "BOTTOMLEFT", 0, -2)
+    sortMenu:SetFrameStrata("DIALOG")
+    MakeBackdrop(sortMenu, "Interface\\DialogFrame\\UI-DialogBox-Background-Dark")
+    sortMenu:SetBackdropBorderColor(0.5, 0.4, 0.7)
+    sortMenu:Hide()
+    sortMenu.rows = {}
+    ui.sortMenu = sortMenu
+    -- Outside-click closer (poll only while shown). Same pattern as the
+    -- row context menu in UI_Outfits.lua.
+    sortMenu:SetScript("OnShow", function(self)
+        self:SetScript("OnUpdate", function(self)
+            if (IsMouseButtonDown("LeftButton") or IsMouseButtonDown("RightButton"))
+               and not MouseIsOver(self) and not MouseIsOver(sortBtn) then
+                self:Hide()
+            end
+        end)
+    end)
+    sortMenu:SetScript("OnHide", function(self) self:SetScript("OnUpdate", nil) end)
+    sortBtn:SetScript("OnClick", function()
+        if sortMenu:IsShown() then sortMenu:Hide()
+        else ui.RebuildSortMenu(); sortMenu:Show() end
+    end)
+    sortBtn:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Change list sort order")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Favourites always bubble to the top when 'Favourites first' is on. The secondary sort decides the rest.", 1, 1, 1, true)
+        GameTooltip:Show()
+    end)
+    sortBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
     -- Hide Slot button -- stages a "hide this slot" preview.
     local hide = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
@@ -288,9 +357,39 @@ function W.CreateMainFrame()
     hide:SetScript("OnLeave", function() GameTooltip:Hide() end)
     ui.hideBtn = hide
 
-    -- List frame
+    -- Collection cycle button (v1.21). Sits BELOW the Hide Slot button on the
+    -- second filter row -- same row as the Sort dropdown. Three states:
+    -- All / Owned / Missing. Missing requires Data/ItemsBySlot.lua to be
+    -- populated; otherwise the list shows an explanatory empty state.
+    local coll = CreateFrame("Button", nil, right, "UIPanelButtonTemplate")
+    coll:SetSize(130, 22)
+    coll:SetPoint("TOPLEFT", hide, "BOTTOMLEFT", 0, -4)
+    coll:SetScript("OnClick", function()
+        local db = GetDB()
+        local cur = db.ui.collectionFilter or "all"
+        local next = (cur == "all") and "owned" or (cur == "owned" and "missing") or "all"
+        db.ui.collectionFilter = next
+        ui.UpdateCollectionButton()
+        ui.RefreshList()
+    end)
+    coll:SetScript("OnEnter", function(self)
+        GameTooltip:SetOwner(self, "ANCHOR_TOP")
+        GameTooltip:SetText("Collection filter")
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Click to cycle: All -> Owned only -> Missing only.", 1, 1, 1, true)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Missing requires |cffffd200Data/ItemsBySlot.lua|r to be populated. Without a master list, Missing shows an empty list with installation hints.", 0.85, 0.85, 0.9, true)
+        GameTooltip:AddLine(" ")
+        GameTooltip:AddLine("Missing rows are dimmed and can be Tried On but not Applied -- you don't actually own the appearance yet.", 0.95, 0.65, 0.30, true)
+        GameTooltip:Show()
+    end)
+    coll:SetScript("OnLeave", function() GameTooltip:Hide() end)
+    ui.collBtn = coll
+
+    -- List frame. Top inset bumped from -32 to -58 in v1.20 to make room
+    -- for the second filter row (sort dropdown / future missing toggle).
     local listBg = CreateFrame("Frame", nil, right)
-    listBg:SetPoint("TOPLEFT", 4, -32)
+    listBg:SetPoint("TOPLEFT", 4, -58)
     listBg:SetPoint("BOTTOMRIGHT", -4, 4)
     MakeBackdrop(listBg, "Interface\\ChatFrame\\ChatFrameBackground")
     listBg:SetBackdropColor(0.05, 0.04, 0.08, 0.55)
@@ -470,7 +569,7 @@ function W.CreateMainFrame()
     local resetView = CreateFrame("Button", nil, dollBg, "UIPanelButtonTemplate")
     resetView:SetSize(56, 18)
     resetView:SetPoint("BOTTOMRIGHT", -8, 8)
-    resetView:SetText("Reset")
+    resetView:SetText(L["Reset"])
     resetView:SetFrameLevel(doll:GetFrameLevel() + 1)
     resetView:SetScript("OnClick", function() doll.resetView() end)
     resetView:SetScript("OnEnter", function(self)
@@ -494,7 +593,7 @@ function W.CreateMainFrame()
     local outfitBtn = CreateFrame("Button", nil, dollCol, "UIPanelButtonTemplate")
     outfitBtn:SetSize(DOLL_WIDTH, 22)
     outfitBtn:SetPoint("TOP", previewLbl, "BOTTOM", 0, -8)
-    outfitBtn:SetText("Outfits (v)")
+    outfitBtn:SetText(L["Outfits (v)"])
     ui.outfitBtn = outfitBtn
 
     local outfitMenu = CreateFrame("Frame", nil, dollCol)
@@ -513,7 +612,7 @@ function W.CreateMainFrame()
     end)
 
     -- Save / Apply / Reset / Delete buttons
-    local saveBtn = MakeBtn("Save as Outfit", (DOLL_WIDTH - 4) / 2, dollCol, function()
+    local saveBtn = MakeBtn(L["Save as Outfit"], (DOLL_WIDTH - 4) / 2, dollCol, function()
         StaticPopup_Show("WARDROBE_NAME_OUTFIT")
     end)
     saveBtn:SetPoint("TOPLEFT", outfitBtn, "BOTTOMLEFT", 0, -6)
@@ -529,7 +628,7 @@ function W.CreateMainFrame()
     saveBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     ui.saveBtn = saveBtn
 
-    local delBtn = MakeBtn("Delete Outfit", (DOLL_WIDTH - 4) / 2, dollCol, function()
+    local delBtn = MakeBtn(L["Delete Outfit"], (DOLL_WIDTH - 4) / 2, dollCol, function()
         local idx = ui.selectedOutfitIdx
         local outfits = GetCharDB().outfits
         if not (idx and outfits[idx]) then
@@ -543,13 +642,13 @@ function W.CreateMainFrame()
     delBtn:SetPoint("TOPRIGHT", outfitBtn, "BOTTOMRIGHT", 0, -6)
     ui.delBtn = delBtn
 
-    local applyPrevBtn = MakeBtn("Apply Preview", (DOLL_WIDTH - 4) / 2, dollCol, function()
+    local applyPrevBtn = MakeBtn(L["Apply Preview"], (DOLL_WIDTH - 4) / 2, dollCol, function()
         W.ApplyPreview()
     end)
     applyPrevBtn:SetPoint("TOPLEFT", saveBtn, "BOTTOMLEFT", 0, -4)
     ui.applyPrevBtn = applyPrevBtn
 
-    local resetPrevBtn = MakeBtn("Reset Preview", (DOLL_WIDTH - 4) / 2, dollCol, function()
+    local resetPrevBtn = MakeBtn(L["Reset Preview"], (DOLL_WIDTH - 4) / 2, dollCol, function()
         wipe(previewSlots)
         ui.RefreshDoll()
         ui.UpdatePreviewLabel()
@@ -561,7 +660,7 @@ function W.CreateMainFrame()
     local serverSetsBtn = CreateFrame("Button", nil, dollCol, "UIPanelButtonTemplate")
     serverSetsBtn:SetSize(DOLL_WIDTH, 22)
     serverSetsBtn:SetPoint("TOPLEFT", applyPrevBtn, "BOTTOMLEFT", 0, -10)
-    serverSetsBtn:SetText("Server Sets (v)")
+    serverSetsBtn:SetText(L["Server Sets (v)"])
     ui.serverSetsBtn = serverSetsBtn
 
     local serverSetsMenu = CreateFrame("Frame", nil, dollCol)
@@ -587,7 +686,7 @@ function W.CreateMainFrame()
     end)
     serverSetsBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    local serverSaveBtn = MakeBtn("Save Server Set", (DOLL_WIDTH - 4) / 2, dollCol, function()
+    local serverSaveBtn = MakeBtn(L["Save Server Set"], (DOLL_WIDTH - 4) / 2, dollCol, function()
         StaticPopup_Show("WARDROBE_NAME_SERVER_SET")
     end)
     serverSaveBtn:SetPoint("TOPLEFT", serverSetsBtn, "BOTTOMLEFT", 0, -4)
@@ -603,7 +702,7 @@ function W.CreateMainFrame()
     serverSaveBtn:SetScript("OnLeave", function() GameTooltip:Hide() end)
     ui.serverSaveBtn = serverSaveBtn
 
-    local serverDelBtn = MakeBtn("Delete Server Set", (DOLL_WIDTH - 4) / 2, dollCol, function()
+    local serverDelBtn = MakeBtn(L["Delete Server Set"], (DOLL_WIDTH - 4) / 2, dollCol, function()
         local idx = ui.selectedServerSetIdx
         local sets = GetCharDB().serverSets
         if not (idx and sets[idx]) then
@@ -621,7 +720,7 @@ function W.CreateMainFrame()
     local bgChk = CreateFrame("CheckButton", "WardrobeBgChk", dollCol, "UICheckButtonTemplate")
     bgChk:SetSize(22, 22)
     bgChk:SetPoint("TOP", serverDelBtn, "BOTTOM", 0, -6)
-    _G["WardrobeBgChkText"]:SetText("Background art")
+    _G["WardrobeBgChkText"]:SetText(L["Background art"])
     _G["WardrobeBgChkText"]:SetFontObject("GameFontNormalSmall")
     bgChk:SetScript("OnClick", function(self)
         GetDB().ui.showBackground = self:GetChecked() and true or false
@@ -641,7 +740,7 @@ function W.CreateMainFrame()
     local appChk = CreateFrame("CheckButton", "WardrobeAppliedChk", dollCol, "UICheckButtonTemplate")
     appChk:SetSize(22, 22)
     appChk:SetPoint("TOPLEFT", bgChk, "BOTTOMLEFT", 0, -2)
-    _G["WardrobeAppliedChkText"]:SetText("Hide applied items")
+    _G["WardrobeAppliedChkText"]:SetText(L["Hide applied items"])
     _G["WardrobeAppliedChkText"]:SetFontObject("GameFontNormalSmall")
     appChk:SetScript("OnClick", function(self)
         GetDB().ui.hideApplied = self:GetChecked() and true or false
@@ -664,7 +763,7 @@ function W.CreateMainFrame()
     hidChk:SetSize(22, 22)
     hidChk:SetPoint("TOPRIGHT", bgChk, "TOPLEFT", -8, 0)
     local hidText = _G["WardrobeShowHiddenChkText"]
-    hidText:SetText("Show hidden items")
+    hidText:SetText(L["Show hidden items"])
     hidText:SetFontObject("GameFontNormalSmall")
     hidText:ClearAllPoints()
     hidText:SetPoint("RIGHT", hidChk, "LEFT", -4, 1)
@@ -693,7 +792,7 @@ function W.CreateMainFrame()
     ui.barFrame = bar
     bar:SetBackdropBorderColor(0.4, 0.3, 0.55)
 
-    local applyPrevBottom = MakeBtn("Apply Preview", 115, bar, function()
+    local applyPrevBottom = MakeBtn(L["Apply Preview"], 115, bar, function()
         W.ApplyPreview()
     end)
     applyPrevBottom:SetPoint("LEFT", 8, 0)
@@ -707,24 +806,24 @@ function W.CreateMainFrame()
     applyPrevBottom:SetScript("OnLeave", function() GameTooltip:Hide() end)
     ui.applyPrevBottom = applyPrevBottom
 
-    local applyAll = MakeBtn("Save Pending", 100, bar, function()
+    local applyAll = MakeBtn(L["Save Pending"], 100, bar, function()
         W.ClickExtra("savePending", "Save pending transmogrifications")
     end)
     applyAll:SetPoint("LEFT", applyPrevBottom, "RIGHT", 6, 0)
 
-    local cancelAll = MakeBtn("Cancel Pending", 110, bar, function()
+    local cancelAll = MakeBtn(L["Cancel Pending"], 110, bar, function()
         W.ClickExtra("cancelPending", "Cancel pending transmogrifications")
     end)
     cancelAll:SetPoint("LEFT", applyAll, "RIGHT", 6, 0)
 
     -- Restore Original is destructive -- wrap in a confirmation popup.
-    local restore = MakeBtn("Restore Original", 130, bar, function()
+    local restore = MakeBtn(L["Restore Original"], 130, bar, function()
         StaticPopup_Show("WARDROBE_CONFIRM_RESTORE_ORIGINAL")
     end)
     restore:SetPoint("LEFT", cancelAll, "RIGHT", 6, 0)
 
     -- Server Menu -- hands the user back to the native gossip frame.
-    local serverMenu = MakeBtn("Server Menu", 110, bar, function()
+    local serverMenu = MakeBtn(L["Server Menu"], 110, bar, function()
         if not GossipFrame then return end
         ui.userInServerMenu = true
         ui.skipCloseGossip  = true
@@ -745,7 +844,7 @@ function W.CreateMainFrame()
     end)
     serverMenu:SetScript("OnLeave", function() GameTooltip:Hide() end)
 
-    local rescan = MakeBtn("Rescan", 80, bar, function()
+    local rescan = MakeBtn(L["Rescan"], 80, bar, function()
         if not GossipFrame:IsShown() and not W.suppressing then
             Print("Talk to the Warpweaver first.")
             return
@@ -819,14 +918,155 @@ function W.BuildSlotTabs()
     end
 end
 
+-------------------------------------------------------------------------------
+-- SORT DROPDOWN (v1.20)
+--
+-- Each entry: { key, label, comparator }.  Comparator returns true if `a`
+-- should come before `b`.  All entries except "favourites_disabled" prepend
+-- favourites-first so starred rows still bubble to the top.
+-------------------------------------------------------------------------------
+
+W.SORT_ORDERS = {
+    { key = "favourites_quality",
+      label = "Favourites + Quality",
+      cmp = function(a, b)
+          if (a.quality or 1) ~= (b.quality or 1) then return (a.quality or 1) > (b.quality or 1) end
+          return (a.name or "") < (b.name or "")
+      end },
+    { key = "quality_desc",
+      label = "Quality (high to low)",
+      cmp = function(a, b)
+          if (a.quality or 1) ~= (b.quality or 1) then return (a.quality or 1) > (b.quality or 1) end
+          return (a.name or "") < (b.name or "")
+      end },
+    { key = "quality_asc",
+      label = "Quality (low to high)",
+      cmp = function(a, b)
+          if (a.quality or 1) ~= (b.quality or 1) then return (a.quality or 1) < (b.quality or 1) end
+          return (a.name or "") < (b.name or "")
+      end },
+    { key = "name_asc",
+      label = "Name (A to Z)",
+      cmp = function(a, b)
+          return (a.name or "") < (b.name or "")
+      end },
+    { key = "name_desc",
+      label = "Name (Z to A)",
+      cmp = function(a, b)
+          return (a.name or "") > (b.name or "")
+      end },
+    { key = "recent",
+      label = "Recently scanned",
+      cmp = function(a, b)
+          -- Higher lastSeen first. Items captured before v1.20 have no
+          -- lastSeen field -- sort them to the bottom (0).
+          local al = a.lastSeen or 0
+          local bl = b.lastSeen or 0
+          if al ~= bl then return al > bl end
+          return (a.name or "") < (b.name or "")
+      end },
+}
+
+W.SORT_BY_KEY = {}
+for _, e in ipairs(W.SORT_ORDERS) do W.SORT_BY_KEY[e.key] = e end
+
+-- Whether the chosen order keeps favourites pinned to the top. The first
+-- entry, "favourites_quality", is the only one that does -- it preserves the
+-- v1.13 behaviour exactly. Every other order is "raw" so power users who
+-- want pure Name A-Z can opt out.
+local function FavouritesFirstEnabled(orderKey)
+    return orderKey == "favourites_quality"
+end
+W.FavouritesFirstEnabled = FavouritesFirstEnabled
+
+function ui.UpdateSortButton()
+    if not ui.sortBtn then return end
+    local key   = GetDB().ui.sortOrder or "favourites_quality"
+    local entry = W.SORT_BY_KEY[key] or W.SORT_ORDERS[1]
+    ui.sortBtn:SetText(string.format(L["Sort: %s"], L[entry.label] or entry.label))
+end
+
+function ui.RebuildSortMenu()
+    local menu = ui.sortMenu
+    if not menu then return end
+    for _, row in ipairs(menu.rows) do row:Hide() end
+    local currentKey = GetDB().ui.sortOrder or "favourites_quality"
+    for i, entry in ipairs(W.SORT_ORDERS) do
+        local row = menu.rows[i]
+        if not row then
+            row = CreateFrame("Button", nil, menu)
+            row:SetHeight(20)
+            row:SetPoint("TOPLEFT",  menu, "TOPLEFT",  4, -4 - (i-1)*20)
+            row:SetPoint("TOPRIGHT", menu, "TOPRIGHT", -4, -4 - (i-1)*20)
+            local hi = row:CreateTexture(nil, "BACKGROUND")
+            hi:SetAllPoints()
+            hi:SetTexture("Interface\\Buttons\\WHITE8X8")
+            hi:SetVertexColor(0.8, 0.7, 0.3, 0)
+            row.hi = hi
+            row:SetScript("OnEnter", function(self) self.hi:SetVertexColor(0.8, 0.7, 0.3, 0.18) end)
+            row:SetScript("OnLeave", function(self) self.hi:SetVertexColor(0.8, 0.7, 0.3, 0) end)
+            local fs = row:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+            fs:SetPoint("LEFT", 8, 0)
+            fs:SetJustifyH("LEFT")
+            row.fs = fs
+            menu.rows[i] = row
+        end
+        local lbl = L[entry.label] or entry.label
+        if entry.key == currentKey then
+            row.fs:SetText("|cffffd700>|r " .. lbl)
+            row.fs:SetTextColor(1, 0.95, 0.6)
+        else
+            row.fs:SetText("   " .. lbl)
+            row.fs:SetTextColor(0.92, 0.92, 0.95)
+        end
+        local k = entry.key
+        row:SetScript("OnClick", function()
+            GetDB().ui.sortOrder = k
+            ui.UpdateSortButton()
+            ui.RefreshList()
+            menu:Hide()
+        end)
+        row:Show()
+    end
+    menu:SetHeight(8 + #W.SORT_ORDERS * 20)
+end
+
+-------------------------------------------------------------------------------
+-- COLLECTION FILTER (v1.21)
+--
+-- Cycles All -> Owned -> Missing. Missing requires Data/ItemsBySlot.lua to
+-- be populated. Button label colour-codes the active state so it's visible
+-- at a glance.
+-------------------------------------------------------------------------------
+
+function ui.UpdateCollectionButton()
+    if not ui.collBtn then return end
+    local s = GetDB().ui.collectionFilter or "all"
+    if s == "all" then
+        ui.collBtn:SetText(L["Collection: All"])
+    elseif s == "owned" then
+        -- Strip any embedded colour from the localised string, then re-apply
+        -- the state colour. This way translators only need to translate the
+        -- words; the colouring stays consistent across locales.
+        local label = L["Collection: Owned"]:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+        local prefix, state = label:match("^(.-: ?)(.*)$")
+        ui.collBtn:SetText((prefix or "") .. "|cff5ce05c" .. (state or label) .. "|r")
+    elseif s == "missing" then
+        local label = L["Collection: Missing"]:gsub("|c%x%x%x%x%x%x%x%x", ""):gsub("|r", "")
+        local prefix, state = label:match("^(.-: ?)(.*)$")
+        ui.collBtn:SetText((prefix or "") .. "|cffff7f4e" .. (state or label) .. "|r")
+    end
+end
+
 function ui.UpdateQualityButton()
     local q = GetDB().ui.qualityFilter
     if q == 0 then
-        ui.qualityBtn:SetText("Quality: All")
+        ui.qualityBtn:SetText(L["Quality: All"])
     else
-        local c = QUALITY_COLOR[q] or {1,1,1}
-        ui.qualityBtn:SetText(string.format("Quality: |cff%02x%02x%02x%s+|r",
-            c[1]*255, c[2]*255, c[3]*255, QUALITY_NAME[q] or "?"))
+        local c    = QUALITY_COLOR[q] or {1,1,1}
+        local qstr = L[QUALITY_NAME[q] or "?"] or QUALITY_NAME[q] or "?"
+        ui.qualityBtn:SetText(string.format(L["Quality: %s+"],
+            string.format("|cff%02x%02x%02x%s|r", c[1]*255, c[2]*255, c[3]*255, qstr)))
     end
 end
 
@@ -865,19 +1105,62 @@ function ui.RefreshList()
     ui._refreshing = true
 
     local char         = GetCharDB()
-    local items        = (char.collection[ui.currentSlot] or {})
+    local owned        = (char.collection[ui.currentSlot] or {})
     local filter       = (ui.search:GetText() or ""):lower()
     local qf           = GetDB().ui.qualityFilter
     local hideApplied  = GetDB().ui.hideApplied
     local showHidden   = GetDB().ui.showHidden
     local appliedEntry = char.applied and char.applied[ui.currentSlot]
     local hidden       = char.hiddenEntries or {}
+    local collFilter   = GetDB().ui.collectionFilter or "all"
+
+    -- Collection filter source selection (v1.21):
+    --   all     -> owned list, plus missing items synthesised from master list
+    --   owned   -> owned list only (original v1.20 behaviour)
+    --   missing -> master list minus what's owned (synthetic rows, dimmed)
+    -- Enchant slots ignore the collection filter -- no master list ships for
+    -- them. Falls back to "owned" for the source set.
+    local rowsAreEnchant = IsEnchantSlot(ui.currentSlot)
+    local effectiveFilter = rowsAreEnchant and "owned" or collFilter
+
+    -- Build the owned-entry set once -- used for both "missing detection"
+    -- and the "is this entry already owned" lookup.
+    local ownedSet = {}
+    for _, it in ipairs(owned) do ownedSet[it.entry] = it end
+
+    local sourceItems = {}
+    if effectiveFilter == "owned" or effectiveFilter == "all" then
+        for _, it in ipairs(owned) do table.insert(sourceItems, it) end
+    end
+    if effectiveFilter == "missing" or effectiveFilter == "all" then
+        local master = W.GetMasterItemList(ui.currentSlot)
+        if master then
+            for _, itemId in ipairs(master) do
+                if not ownedSet[itemId] then
+                    -- Lazy-resolve from GetItemInfo. Unresolved rows render
+                    -- with a placeholder icon until the cache warms.
+                    local _, link, quality, _, _, _, _, _, _, icon = GetItemInfo(itemId)
+                    table.insert(sourceItems, {
+                        entry    = itemId,
+                        name     = link and link:match("|h%[(.-)%]|h") or ("Item " .. tostring(itemId)),
+                        link     = link,
+                        quality  = quality or 1,
+                        icon     = icon or "Interface\\Icons\\INV_Misc_QuestionMark",
+                        resolved = (link ~= nil),
+                        missing  = true,
+                    })
+                end
+            end
+        end
+    end
+
     local filtered = {}
-    for _, it in ipairs(items) do
+    for _, it in ipairs(sourceItems) do
         if not it.resolved and it.entry then
             local _, link, quality, _, _, _, _, _, _, icon = GetItemInfo(it.entry)
             if link then
                 it.link     = link
+                if it.missing then it.name = link:match("|h%[(.-)%]|h") or it.name end
                 it.quality  = quality or it.quality
                 it.icon     = icon or it.icon
                 it.resolved = true
@@ -891,16 +1174,21 @@ function ui.RefreshList()
             table.insert(filtered, it)
         end
     end
-    -- Sort: favourites bubble to the top, then highest quality first, then
-    -- name A-Z. The favourite flag is a per-character marker stored in
-    -- char.favourites keyed by entry ID (number for items, string for enchants).
-    local favs = char.favourites or {}
+    -- Sort: dispatch on db.ui.sortOrder. The favourites-first behaviour from
+    -- v1.13 is preserved by the default order key ("favourites_quality");
+    -- other orders are raw so power users can pick pure Name A-Z, etc.
+    local favs       = char.favourites or {}
+    local orderKey   = GetDB().ui.sortOrder or "favourites_quality"
+    local orderEntry = W.SORT_BY_KEY[orderKey] or W.SORT_ORDERS[1]
+    local favFirst   = W.FavouritesFirstEnabled(orderKey)
+    local cmp        = orderEntry.cmp
     table.sort(filtered, function(a, b)
-        local af = favs[a.entry] and 1 or 0
-        local bf = favs[b.entry] and 1 or 0
-        if af ~= bf then return af > bf end
-        if (a.quality or 1) ~= (b.quality or 1) then return (a.quality or 1) > (b.quality or 1) end
-        return (a.name or "") < (b.name or "")
+        if favFirst then
+            local af = favs[a.entry] and 1 or 0
+            local bf = favs[b.entry] and 1 or 0
+            if af ~= bf then return af > bf end
+        end
+        return cmp(a, b)
     end)
 
     FauxScrollFrame_Update(ui.listScroll, #filtered, #ui.rows, 22)
@@ -915,31 +1203,37 @@ function ui.RefreshList()
         offset = maxOffset
         ui.listScroll:SetVerticalScroll(maxOffset * 22)
     end
-    local rowsAreEnchant = IsEnchantSlot(ui.currentSlot)
     for i = 1, #ui.rows do
         local row = ui.rows[i]
         local it = filtered[i + offset]
         if it then
-            local isHidden = hidden[it.entry] and true or false
+            local isHidden  = hidden[it.entry] and true or false
+            local isMissing = it.missing and true or false
             row.icon:SetTexture(it.icon)
-            row.icon:SetDesaturated(isHidden)
+            row.icon:SetDesaturated(isHidden or isMissing)
             local c = QUALITY_COLOR[it.quality or 1] or {1,1,1}
             row.nameFs:SetText(it.name or "?")
             if rowsAreEnchant then
                 -- Enchants have no item quality (everything falls to "Common"
                 -- which is misleading). Show "Enchant" in a gold tint instead.
                 row.nameFs:SetTextColor(0.95, 0.85, 0.45)
-                row.qualFs:SetText(isHidden and "Enchant (hidden)" or "Enchant")
+                row.qualFs:SetText(isHidden and L["Enchant (hidden)"] or L["Enchant"])
                 row.qualFs:SetTextColor(0.75, 0.60, 0.25)
             else
                 row.nameFs:SetTextColor(c[1], c[2], c[3])
-                row.qualFs:SetText((QUALITY_NAME[it.quality or 1] or "") ..
-                                   (isHidden and " (hidden)" or ""))
+                row.qualFs:SetText((L[QUALITY_NAME[it.quality or 1] or ""] or "") ..
+                                   (isHidden and L[" (hidden)"] or "") ..
+                                   (isMissing and L[" (uncollected)"] or ""))
                 row.qualFs:SetTextColor(c[1]*0.8, c[2]*0.8, c[3]*0.8)
             end
             if isHidden then
                 row.nameFs:SetTextColor(0.55, 0.55, 0.55)
                 row.qualFs:SetTextColor(0.50, 0.40, 0.40)
+            elseif isMissing then
+                -- Dim missing rows so they're visually distinct from owned
+                -- ones but still readable. Quality tint still hints at rarity.
+                row.nameFs:SetTextColor(c[1]*0.55, c[2]*0.55, c[3]*0.55)
+                row.qualFs:SetTextColor(c[1]*0.45, c[2]*0.45, c[3]*0.45)
             end
             if favs[it.entry] then
                 row.star.fs:SetTextColor(1, 0.85, 0.30)
@@ -959,14 +1253,21 @@ function ui.RefreshList()
     if char.lastScan and char.lastScan > 0 then
         local age  = time() - char.lastScan
         local mins = math.floor(age / 60)
-        base = string.format("Last scan: %dm ago  |  %d items in %s",
-            mins, #filtered, SLOT_BY_ID[ui.currentSlot] and SLOT_BY_ID[ui.currentSlot].label or "?")
+        local slotLabel = SLOT_BY_ID[ui.currentSlot] and SLOT_BY_ID[ui.currentSlot].label or "?"
+        if effectiveFilter == "missing" and W.MasterListIsEmpty() then
+            base = L["Missing list empty -- populate Data/ItemsBySlot.lua to see uncollected items"]
+        else
+            base = string.format(L["Last scan: %dm ago  |  %d items in %s"], mins, #filtered, slotLabel)
+            if effectiveFilter ~= "all" and effectiveFilter ~= "owned" then
+                base = base .. " (" .. effectiveFilter .. ")"
+            end
+        end
     else
-        base = "No scan yet"
+        base = L["No scan yet"]
     end
     if W.WarmingActive() then
-        ui.stamp:SetText(string.format("|cffffd200Warming %d/%d|r",
-            W.warmIdx - 1, W.warmTotal))
+        ui.stamp:SetText("|cffffd200" .. string.format(L["Warming %d/%d"],
+            W.warmIdx - 1, W.warmTotal) .. "|r")
     else
         ui.stamp:SetText(base)
     end
@@ -977,7 +1278,7 @@ end
 function ui.UpdateHideButton()
     if not ui.hideBtn then return end
     local s = SLOT_BY_ID[ui.currentSlot]
-    ui.hideBtn:SetText("Hide " .. (s and s.label or "Slot"))
+    ui.hideBtn:SetText(s and string.format(L["Hide %s"], s.label) or L["Hide Slot"])
     ui.hideBtn:Enable()
 end
 

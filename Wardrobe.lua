@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.19
+-- Wardrobe  v1.23
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License -- see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
@@ -136,15 +136,15 @@ SlashCmdList["WARDROBE"] = function(msg)
         if GossipFrame and GossipFrame:IsShown() or W.suppressing then
             W.StartScan()
         else
-            W.Print("Talk to the Warpweaver, then /wb rescan.")
+            W.Print(W.L["Talk to the Warpweaver, then /wb rescan."])
         end
     elseif msg == "reset" then
         WardrobeDB = nil
-        W.Print("All data reset. Reload with /reload.")
+        W.Print(W.L["All data reset. Reload with /reload."])
     elseif msg == "debug" then
         local db = W.GetDB()
         db.debug = not db.debug
-        W.Print("Debug " .. (db.debug and "ON" or "OFF"))
+        W.Print(db.debug and W.L["Debug ON"] or W.L["Debug OFF"])
     elseif msg:sub(1,8) == "npcname " then
         local n = msg:sub(9):gsub("^%s+",""):gsub("%s+$","")
         if n ~= "" then
@@ -152,6 +152,8 @@ SlashCmdList["WARDROBE"] = function(msg)
             W.GetDB().npcNames[n:gsub("^%l", string.upper)] = true
             W.Print("Registered NPC name: " .. n)
         end
+    elseif msg == "settings" or msg == "config" or msg == "options" then
+        if W.ToggleSettingsFrame then W.ToggleSettingsFrame() end
     elseif msg == "minimap" then
         local m = W.GetDB().ui.minimap
         m.hide = not m.hide
@@ -169,9 +171,9 @@ SlashCmdList["WARDROBE"] = function(msg)
     else
         W.Print("|cffd4af37" .. W.ADDON_NAME .. "|r v" .. W.ADDON_VERSION ..
               " by " .. W.ADDON_AUTHOR .. "  -  " .. W.ADDON_URL)
-        W.Print("Commands: /wb (toggle), /wb rescan, /wb reset, /wb debug, /wb minimap [reset], /wb share <Outfit>, /wb import <code>, /wb npcname <Name>")
+        W.Print("Commands: /wb (toggle), /wb settings, /wb rescan, /wb reset, /wb debug, /wb minimap [reset], /wb share <Outfit>, /wb import <code>, /wb npcname <Name>")
     end
 end
 
-W.Print("v" .. W.ADDON_VERSION .. " by |cffd4af37" .. W.ADDON_AUTHOR ..
-      "|r loaded. Talk to a Warpweaver to begin.")
+W.Print(string.format(W.L["v%s by %s loaded. Talk to a Warpweaver to begin."],
+    W.ADDON_VERSION, "|cffd4af37" .. W.ADDON_AUTHOR .. "|r"))

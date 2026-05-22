@@ -15,6 +15,7 @@ local GetCharDB     = W.GetCharDB
 local Print         = W.Print
 local ErrorMsg      = W.ErrorMsg
 local MakeBackdrop  = W.MakeBackdrop
+local L             = W.L
 
 local ui           = W.ui
 local previewSlots = W.previewSlots
@@ -219,25 +220,55 @@ function ui.ShowRowContextMenu(slotId, itemData)
     m.headFs:SetText(string.format("|cff%02x%02x%02x%s|r",
         qc[1]*255, qc[2]*255, qc[3]*255, itemData.name or "?"))
 
-    local entries = {
-        { label  = "Apply",
-          colour = {1.00, 0.95, 0.60},
-          action = function() W.ApplyEntry(slotId, itemData.entry) end },
-        { label  = "Try On (preview)",
-          colour = {0.85, 0.85, 1.00},
-          action = function()
-              if ui.PreviewItem then ui.PreviewItem(slotId, itemData) end
-          end },
-        { label  = isFav and "Unfavourite" or "Favourite",
-          colour = {1.00, 0.85, 0.30},
-          action = function() ui.ToggleFavourite(itemData.entry) end },
-        { label  = isHidden and "Unhide (restore to list)" or "Hide from List",
-          colour = {0.85, 0.55, 0.55},
-          action = function() ui.ToggleHidden(itemData.entry) end },
-        { label  = "Cancel",
-          colour = {0.65, 0.65, 0.70},
-          action = function() end },
-    }
+    -- Apply is disabled for "missing" rows (v1.21) -- the player doesn't
+    -- own the appearance yet, so the server has nothing to transmog from.
+    -- Try On still works because DressUpModel only needs the itemId, not
+    -- collection ownership.
+    local isMissing = itemData.missing and true or false
+    local entries
+    if isMissing then
+        entries = {
+            { label  = "|cff888888" .. L["Apply"] .. " " .. L[" (uncollected)"]:gsub("^ ", "") .. "|r",
+              colour = {0.55, 0.55, 0.55},
+              action = function()
+                  W.ErrorMsg(L["This appearance isn't in your collection yet -- Try On only."])
+              end },
+            { label  = L["Try On (preview)"],
+              colour = {0.85, 0.85, 1.00},
+              action = function()
+                  if ui.PreviewItem then ui.PreviewItem(slotId, itemData) end
+              end },
+            { label  = isFav and L["Unfavourite"] or L["Favourite"],
+              colour = {1.00, 0.85, 0.30},
+              action = function() ui.ToggleFavourite(itemData.entry) end },
+            { label  = isHidden and L["Unhide (restore to list)"] or L["Hide from List"],
+              colour = {0.85, 0.55, 0.55},
+              action = function() ui.ToggleHidden(itemData.entry) end },
+            { label  = L["Cancel"],
+              colour = {0.65, 0.65, 0.70},
+              action = function() end },
+        }
+    else
+        entries = {
+            { label  = L["Apply"],
+              colour = {1.00, 0.95, 0.60},
+              action = function() W.ApplyEntry(slotId, itemData.entry) end },
+            { label  = L["Try On (preview)"],
+              colour = {0.85, 0.85, 1.00},
+              action = function()
+                  if ui.PreviewItem then ui.PreviewItem(slotId, itemData) end
+              end },
+            { label  = isFav and L["Unfavourite"] or L["Favourite"],
+              colour = {1.00, 0.85, 0.30},
+              action = function() ui.ToggleFavourite(itemData.entry) end },
+            { label  = isHidden and L["Unhide (restore to list)"] or L["Hide from List"],
+              colour = {0.85, 0.55, 0.55},
+              action = function() ui.ToggleHidden(itemData.entry) end },
+            { label  = L["Cancel"],
+              colour = {0.65, 0.65, 0.70},
+              action = function() end },
+        }
+    end
     for i, b in ipairs(m.buttons) do
         local e = entries[i]
         if e then
@@ -439,9 +470,9 @@ end
 W.PopupEditBox = PopupEditBox
 
 StaticPopupDialogs["WARDROBE_NAME_OUTFIT"] = {
-    text          = "Name this outfit:",
-    button1       = "Save",
-    button2       = "Cancel",
+    text          = L["Outfit name?"],
+    button1       = L["Save"],
+    button2       = L["Cancel"],
     hasEditBox    = true,
     maxLetters    = 32,
     timeout       = 0,
@@ -470,9 +501,9 @@ StaticPopupDialogs["WARDROBE_NAME_OUTFIT"] = {
 }
 
 StaticPopupDialogs["WARDROBE_DELETE_OUTFIT"] = {
-    text         = "Delete this outfit?",   -- overwritten before Show
-    button1      = "Delete",
-    button2      = "Cancel",
+    text         = L["Delete this outfit?"],   -- overwritten before Show
+    button1      = L["Delete"],
+    button2      = L["Cancel"],
     timeout      = 0,
     whileDead    = true,
     hideOnEscape = true,
@@ -480,9 +511,9 @@ StaticPopupDialogs["WARDROBE_DELETE_OUTFIT"] = {
 }
 
 StaticPopupDialogs["WARDROBE_NAME_SERVER_SET"] = {
-    text          = "Name the server set (costs gold per the server's fee):",
-    button1       = "Save",
-    button2       = "Cancel",
+    text          = L["Server set name?"],
+    button1       = L["Save"],
+    button2       = L["Cancel"],
     hasEditBox    = true,
     maxLetters    = 32,
     timeout       = 0,
@@ -511,9 +542,9 @@ StaticPopupDialogs["WARDROBE_NAME_SERVER_SET"] = {
 }
 
 StaticPopupDialogs["WARDROBE_DELETE_SERVER_SET"] = {
-    text         = "Delete this server set?",   -- overwritten before Show
-    button1      = "Delete",
-    button2      = "Cancel",
+    text         = L["Delete this server set?"],   -- overwritten before Show
+    button1      = L["Delete"],
+    button2      = L["Cancel"],
     timeout      = 0,
     whileDead    = true,
     hideOnEscape = true,
@@ -551,6 +582,8 @@ function W.ShowWardrobeUI()
     W.CreateMainFrame()
     W.BuildSlotTabs()
     ui.UpdateQualityButton()
+    if ui.UpdateSortButton then ui.UpdateSortButton() end
+    if ui.UpdateCollectionButton then ui.UpdateCollectionButton() end
     if not ui.currentSlot then ui.currentSlot = SLOTS[1].id end
     ui.RefreshTabs()
     ui.UpdateHideButton()

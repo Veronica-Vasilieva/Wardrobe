@@ -56,10 +56,11 @@ Visible improvements players will notice. Each is contained.
    machine. Tracking is forward-looking: pre-existing transmogs
    and Server-Menu applies aren't known until re-applied through
    Wardrobe.
-9. **Sort dropdown.** [M]
-   *Why:* Currently fixed sort (quality desc, then name asc). Add Name
-   asc, Name desc, Quality, "Recently scanned" — saved in
-   `db.ui.sortOrder`.
+9. ~~**Sort dropdown.**~~ ✅ Done in v1.20. Six options (Favourites +
+   Quality default / Quality desc / Quality asc / Name A-Z / Name Z-A /
+   Recently scanned), persisted as `db.ui.sortOrder`. New second filter
+   row directly under the Quality button to leave room next to it for
+   the v1.21 missing-collections cycle button.
 10. ~~**Quick clear button on search box.**~~ ✅ Done in v1.14. Small
     "X" inside the search box's right edge, visible only when the
     box has text. Click empties the search and unfocuses.
@@ -154,6 +155,13 @@ Bigger value adds. Each warrants design discussion before coding.
     *Why:* Currently outfits are per-character. Some players want to
     share looks across alts (e.g., paladin → death knight plate). Add
     an "Account-wide" toggle on Save.
+41. ~~**Missing-collections filter.**~~ ✅ Done in v1.21. Collection
+    cycle button (All / Owned / Missing) beneath Hide Slot on the
+    second filter row. Driven by a `Data/ItemsBySlot.lua` master list
+    that ships empty; populated via `tools/build_items_list.py` against
+    a CSV/JSON item DB export. Missing rows render dimmed; Apply is
+    blocked (server can't transmog appearances you don't own) but Try
+    On still works.
 
 ## Tier 5 — Architecture & maintenance
 
@@ -169,13 +177,17 @@ Pays off in iteration speed for everything above.
     root. `python build_release.py` builds the zip in `dist/`;
     `python build_release.py --release` does the full GitHub flow
     with notes auto-extracted from CHANGELOG.md.
-34. **Settings panel.** [L]
-    *Why:* `/wb debug`, `/wb npcname`, and the BG checkbox are
-    scattered. A proper settings frame with grouped checkboxes.
-35. **Localization framework.** [XL]
-    *Why:* Match AutoLoot's structure — a `Locale.lua` with key→string
-    tables and per-language overlay files. Wraps every user-visible
-    string in `L["…"]`. Not urgent but unlocks community translations.
+34. ~~**Settings panel.**~~ ✅ Done in v1.22. New `UI_Settings.lua`
+    module opens via gear button on the main window or `/wb settings`.
+    Five grouped sections (Filters & sort cross-refs, Visibility,
+    Behaviour, NPC names, Debug). Centralises every persistent toggle
+    plus the scan-step-delay slider that previously needed a /reload.
+35. ~~**Localization framework.**~~ ✅ Done in v1.23. New `Locale/`
+    folder matching AutoLoot's pattern -- canonical `Locale.lua` with
+    ~125 enUS keys, plus de/fr/ru/es stubs. Untranslated keys fall
+    back to English via metatable. Most visible strings wrapped in
+    UI_Main, UI_Outfits, UI_Settings, Scan, Wardrobe.lua; tooltips
+    and slash help remain English for incremental follow-up.
 36. **Lua tests for the parser.** [M]
     *Why:* `ParseItemOption`, `MatchesSlotLabel`, and `FindNavOptions`
     handle gossip text under many variants. A few asserts catching
@@ -224,19 +236,24 @@ deeper work:
    v1.18.
 9. ~~**Day 9** — item 32 (split Wardrobe.lua into multiple files)~~
    ✅ shipped as v1.19.
+10. ~~**Day 10** — item 9 (sort dropdown)~~ ✅ shipped as v1.20.
+11. ~~**Day 11** — missing-collections filter~~ ✅ shipped as v1.21
+    (not originally listed; added as item #41 in Tier 4).
+12. ~~**Day 12** — item 34 (settings panel)~~ ✅ shipped as v1.22.
+13. ~~**Day 13** — item 35 (localisation framework)~~ ✅ shipped as
+    v1.23.
 
-After that the remaining bigger items (compare mode, settings panel,
-sort dropdown, keyboard nav, localization) can be picked up
-individually.
+After that the remaining bigger items (compare mode, keyboard nav,
+slot icons on tabs, item-level slider) can be picked up individually.
 
 ## Status
 
-**Shipped so far (16 items + 1 extra), across v1.11 → v1.19:**
+**Shipped so far (20 items + 1 extra), across v1.11 → v1.23:**
 - Tier 1 — Hardening (5/6): #1, #2, #3, #4, #5
-- Tier 2 — Quality-of-life (6/8): #7, #8, #10, #11, #13, #14
+- Tier 2 — Quality-of-life (7/8): #7, #8, #9, #10, #11, #13, #14
 - Tier 3 — UI polish (1/9): #19
-- Tier 4 — New features (2/8): #24, #26
-- Tier 5 — Architecture (2/5): #32, #33
+- Tier 4 — New features (3/9): #24, #26, #41 (missing-collections)
+- Tier 5 — Architecture (4/5): #32, #33, #34, #35
 - **Extras** (not originally listed): right-click slot tab to clear
   that slot's preview (v1.15)
 
@@ -263,6 +280,21 @@ individually.
 - **v1.19** — Day 9: architecture refactor (#32) — split
   `Wardrobe.lua` into nine focused modules under a private addon
   namespace (`local _, W = ...`); no user-visible behaviour changes.
+- **v1.20** — Day 10: sort dropdown (#9) — six order options, persisted
+  as `db.ui.sortOrder`. New second filter row under the Quality button
+  to leave room for the v1.21 missing-collections cycle button.
+- **v1.21** — Day 11: missing-collections filter (#41) — All / Owned /
+  Missing cycle button beneath Hide Slot. Master list ships empty in
+  `Data/ItemsBySlot.lua`; populated by `tools/build_items_list.py`.
+  Missing rows render dimmed; Apply is blocked, Try On still works.
+- **v1.22** — Day 12: settings panel (#34) — new `UI_Settings.lua`
+  module, gear button in the main window, `/wb settings`. Five grouped
+  sections; the scan-step-delay slider is the first runtime knob that
+  doesn't need a /reload.
+- **v1.23** — Day 13: localisation framework (#35) — new `Locale/`
+  folder, ~125 enUS keys, stubs for de/fr/ru/es. `W.L` exposed on the
+  shared namespace; most visible strings wrapped, tooltips and slash
+  help remain English for incremental follow-up.
 
 ---
 

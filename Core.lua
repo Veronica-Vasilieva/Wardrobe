@@ -16,7 +16,7 @@ local addonName, W = ...
 
 W.ADDON         = "Wardrobe"
 W.ADDON_NAME    = "Wardrobe"
-W.ADDON_VERSION = "1.19"
+W.ADDON_VERSION = "1.23"
 W.ADDON_AUTHOR  = "Veronica-Vasilieva"
 W.ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 W.ADDON_IDENT   = W.ADDON_NAME .. " v" .. W.ADDON_VERSION .. " by " .. W.ADDON_AUTHOR
@@ -112,6 +112,8 @@ local DB_DEFAULTS = {
         showBackground = true,
         hideApplied    = false,
         showHidden     = false,
+        sortOrder      = "favourites_quality",  -- v1.20
+        collectionFilter = "all",                -- v1.21 -- "all" / "owned" / "missing"
         minimap        = { hide = false, angle = 210 },
     },
     debug        = false,
@@ -143,6 +145,8 @@ function W.GetDB()
     if WardrobeDB.ui.showBackground == nil then WardrobeDB.ui.showBackground = true  end
     if WardrobeDB.ui.hideApplied    == nil then WardrobeDB.ui.hideApplied    = false end
     if WardrobeDB.ui.showHidden     == nil then WardrobeDB.ui.showHidden     = false end
+    if WardrobeDB.ui.sortOrder      == nil then WardrobeDB.ui.sortOrder      = "favourites_quality" end
+    if WardrobeDB.ui.collectionFilter == nil then WardrobeDB.ui.collectionFilter = "all" end
     -- Minimap button state (v1.16+). Saves are nested so old toons that
     -- already had a ui table get a fresh defaults object on first read.
     WardrobeDB.ui.minimap = WardrobeDB.ui.minimap or {}
@@ -180,6 +184,40 @@ function W.GetCharDB()
     if not db.chars[key].applied       then db.chars[key].applied       = {} end
     if not db.chars[key].hiddenEntries then db.chars[key].hiddenEntries = {} end
     return db.chars[key]
+end
+
+-------------------------------------------------------------------------------
+-- LOCALISATION ACCESS (v1.23)
+--
+-- Modules cache W.L into a local for terse `L["..."]` lookups. Wardrobe_L is
+-- created by Locale/Locale.lua at load time. If something goes wrong and
+-- Wardrobe_L is nil (e.g. the locale folder was stripped from a redistributed
+-- copy), fall back to a key-passthrough table so the addon still runs.
+-------------------------------------------------------------------------------
+
+W.L = _G.Wardrobe_L or setmetatable({}, { __index = function(_, k) return k end })
+
+-------------------------------------------------------------------------------
+-- MASTER ITEM LIST (v1.21)
+--
+-- Read from Data/ItemsBySlot.lua. May be empty if the user hasn't run the
+-- generator. Helpers gate Missing-mode features on whether the list has
+-- any entries.
+-------------------------------------------------------------------------------
+
+function W.GetMasterItemList(slotId)
+    local master = _G.WardrobeItemsBySlot
+    if not master then return nil end
+    return master[slotId]
+end
+
+function W.MasterListIsEmpty()
+    local master = _G.WardrobeItemsBySlot
+    if not master then return true end
+    for _, list in pairs(master) do
+        if list and #list > 0 then return false end
+    end
+    return true
 end
 
 -------------------------------------------------------------------------------

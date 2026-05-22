@@ -301,6 +301,20 @@ function W.BuildWarmQueue()
             end
         end
     end
+    -- v1.21: also warm the master item list so "Missing" rows display real
+    -- names/icons instead of "Item 12345" stubs. Only do this if the master
+    -- list is populated.
+    local master = _G.WardrobeItemsBySlot
+    if master then
+        for _, list in pairs(master) do
+            for _, itemId in ipairs(list) do
+                if type(itemId) == "number" and not seen[itemId] and not GetItemInfo(itemId) then
+                    seen[itemId] = true
+                    table.insert(W.warmQueue, itemId)
+                end
+            end
+        end
+    end
     W.warmTotal = #W.warmQueue
     if W.warmTotal > 0 then
         Dbg("warming cache for " .. W.warmTotal .. " items")

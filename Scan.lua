@@ -28,7 +28,13 @@ local MatchesSlotLabel    = W.MatchesSlotLabel
 local FindNavOptions      = W.FindNavOptions
 local IsMainMenu          = W.IsMainMenu
 
-local SCAN_STEP_DELAY = W.SCAN_STEP_DELAY
+-- SCAN_STEP_DELAY is read dynamically at each tick (v1.22) so the settings
+-- panel can tune it without /reload. db.scanStepDelay overrides the
+-- compiled-in default when present.
+local function CurrentScanStepDelay()
+    local db = GetDB()
+    return db.scanStepDelay or W.SCAN_STEP_DELAY
+end
 local SCAN_TIMEOUT    = W.SCAN_TIMEOUT
 local SCAN_MAX_PAGES  = W.SCAN_MAX_PAGES
 
@@ -123,6 +129,7 @@ local function CaptureSlotItems(slotId, isFirstPage, opts)
         local entry, name, enchIcon = ParseItemOption(opt.text, isEnchant)
         if entry and not seen[entry] then
             seen[entry] = true
+            local now = time()
             if isEnchant then
                 table.insert(items, {
                     entry    = entry,   -- string: enchant name
@@ -131,6 +138,7 @@ local function CaptureSlotItems(slotId, isFirstPage, opts)
                     quality  = 1,
                     icon     = enchIcon,
                     resolved = true,
+                    lastSeen = now,     -- v1.20 -- "Recently scanned" sort
                 })
             else
                 local _, link, quality, _, _, _, _, _, _, icon = GetItemInfo(entry)
@@ -141,6 +149,7 @@ local function CaptureSlotItems(slotId, isFirstPage, opts)
                     quality  = quality or 1,
                     icon     = icon or "Interface\\Icons\\INV_Misc_QuestionMark",
                     resolved = (link ~= nil),
+                    lastSeen = now,     -- v1.20 -- "Recently scanned" sort
                 })
             end
             newOnPage = newOnPage + 1
@@ -169,13 +178,13 @@ local function FinishScan()
     local total = 0
     for _, items in pairs(char.collection) do total = total + #items end
     W.ResetScan()
-    Print(string.format("Wardrobe scan complete -- %d appearances cached.", total))
+    Print(string.format(W.L["Wardrobe scan complete -- %d appearances cached."], total))
     -- ShowWardrobeUI internally invokes BuildWarmQueue, so no separate call here.
     if W.ShowWardrobeUI then W.ShowWardrobeUI() end
 end
 
 local function AbortScan(reason)
-    Print("Scan aborted: " .. tostring(reason))
+    Print(string.format(W.L["Scan aborted: %s"], tostring(reason)))
     W.ResetScan()
     W.RestoreGossipFrame()
 end
@@ -193,7 +202,7 @@ scanDriver:SetScript("OnUpdate", function(self, elapsed)
         self:Hide()
         return
     end
-    if self.t < SCAN_STEP_DELAY then return end
+    if self.t < CurrentScanStepDelay() then return end
     self.t = 0
     if self.pendingAction then
         local action = self.pendingAction
@@ -288,7 +297,7 @@ function W.StartScan()
         AbortScan("no recognisable slot rows in gossip menu")
         return
     end
-    Print("Scanning " .. #scanState.queue .. " slots...")
+    Print(string.format(W.L["Scanning %d slots..."], #scanState.queue))
     W.SuppressGossipFrame()
     ScanNextSlot()
 end

@@ -1,5 +1,167 @@
 # Wardrobe — changelog
 
+## [1.23] - 2026-05-23
+
+Day 13 of the ROADMAP polish sprint — localisation framework
+(roadmap item #35).
+
+### Added
+- **New `Locale/` folder** with the canonical key list and four locale
+  stubs:
+  - `Locale.lua` — creates the global `Wardrobe_L` table with a
+    key-passthrough fallback, plus the canonical enUS values. ~125
+    keys covering window chrome, filter labels, sort orders, quality
+    names, doll-column buttons, bottom-bar actions, row context menu,
+    outfit / share popups, settings sections, and chat messages.
+  - `Locale-deDE.lua`, `Locale-frFR.lua`, `Locale-ruRU.lua`,
+    `Locale-esES.lua` — translation stubs with example entries. Each
+    file is a no-op when `GetLocale()` doesn't match.
+- **`W.L`** exposed on the private addon namespace for terse `L["..."]`
+  lookups in every module.
+
+### Changed
+- Wrapped the most user-visible strings in `UI_Main`, `UI_Outfits`,
+  `UI_Settings`, `Scan`, and `Wardrobe.lua` (load message, command
+  feedback). Tooltips and slash-command help text are still English-
+  only for now -- they'll be wrapped incrementally as translations
+  land. Untranslated strings fall back to English via the metatable.
+- `Wardrobe.toc` load order: `Locale/*.lua` loads BEFORE `Core.lua`
+  so `W.L = Wardrobe_L` resolves to the populated table.
+
+### Internal
+- `Core.lua` ends with `W.L = _G.Wardrobe_L or setmetatable(...)` -- a
+  defensive fallback in case the locale folder is stripped from a
+  redistributed copy.
+- Bumped version to 1.23 across the .toc, addon constants, banner, and
+  the release zip.
+
+## [1.22] - 2026-05-23
+
+Day 12 of the ROADMAP polish sprint — settings panel (roadmap item #34).
+
+### Added
+- **New settings panel** in `UI_Settings.lua`. Opens via:
+  - The gold `[S]` gear button in the top-right of the main window
+    (between the close X and the `?` info badge).
+  - `/wb settings` (also `/wb config`, `/wb options`).
+- Scrollable dialog with five grouped sections:
+  - **Filters & sort** — explanatory cross-refs (these controls live on
+    the main filter row; centralising them in settings would be a
+    duplicate surface).
+  - **Visibility** — Background art, Hide applied items, Show hidden
+    items, Hide minimap button. The first three mirror the doll-column
+    checkboxes; settings is now the canonical surface and the doll
+    checkboxes are shortcuts.
+  - **Behaviour** — Scan step delay slider (0.05s–0.50s, step 0.05s).
+    Tunes the throttle between gossip clicks for laggy servers without
+    requiring a /reload. Persisted as `db.scanStepDelay`.
+  - **Recognised NPC names** — list every name in `db.npcNames` with a
+    Remove button per row, plus an Add row at the bottom. Replaces the
+    write-only `/wb npcname <Name>` slash command (which still works).
+  - **Debug** — Verbose chat logging toggle. Mirrors `/wb debug`.
+
+### Changed
+- `Scan.lua`'s scan-step delay is now read dynamically from
+  `db.scanStepDelay` each tick (falling back to `W.SCAN_STEP_DELAY`'s
+  compiled-in default). Previously the constant was captured into a
+  local at file-load time, so any in-game tuning needed a /reload.
+- `Wardrobe.toc` load order: `UI_Settings.lua` slots between `UI_Main`
+  and `UI_Outfits` so it can reach the shared `ui` table and helpers.
+
+### Internal
+- `W.CreateSettingsFrame()` / `W.ShowSettingsFrame()` /
+  `W.ToggleSettingsFrame()` API in `UI_Settings.lua`. Settings frame is
+  created on first show and persists for the session.
+- Bumped version to 1.22 across the .toc, addon constants, banner, and
+  the release zip.
+
+## [1.21] - 2026-05-23
+
+Day 11 of the ROADMAP polish sprint — missing-collections filter.
+
+### Added
+- **Collection cycle button** in the second filter row, beneath the
+  Hide Slot button. Three states:
+  - **All** (default) — shows owned items plus any uncollected ones from
+    the master list, dimmed and tagged `(uncollected)`.
+  - **Owned only** — the v1.20 behaviour, only items the player has
+    transmogged via the Warpweaver.
+  - **Missing only** — only uncollected items from the master list.
+    Lets the player browse "what's out there I haven't unlocked".
+  Persisted as `db.ui.collectionFilter` (string).
+- **Master item list** loaded from `Data/ItemsBySlot.lua` at addon load.
+  Ships empty -- populated via `tools/build_items_list.py` against a
+  CSV/JSON item export. Without a master list, Missing mode shows an
+  empty list with a helpful "populate Data/ItemsBySlot.lua" hint in the
+  status stamp.
+- **`tools/build_items_list.py`** — generator script that converts an
+  external item DB into `Data/ItemsBySlot.lua`. Takes `--source items.csv`
+  or `--source items.json`. Maps WoW `InventoryType` to Wardrobe's
+  internal slot ids (head/shoulders/chest/etc.). Repo-only -- excluded
+  from the release zip.
+
+### Changed
+- Missing rows render dimmed (~55 % colour of the quality tint) with a
+  desaturated icon to make them visually distinct from owned ones.
+- The row context menu on a missing row disables Apply (replaced with
+  a greyed-out "Apply (uncollected)" entry that just shows an error
+  message) -- you can't transmog an appearance you don't own. Try On
+  still works because DressUpModel only needs the itemId.
+- The status stamp at the bottom of the list shows the current mode in
+  parentheses when it's not "all" or "owned".
+- Enchant slots ignore the collection filter -- there's no master list
+  for enchants, so they always show owned-only.
+- The pre-existing `BuildWarmQueue` cache-warmer now also walks the
+  master list so Missing-row names/icons resolve quickly on first open
+  instead of showing "Item 12345" stubs.
+
+### Internal
+- `Core.lua` `W.GetMasterItemList(slotId)` and `W.MasterListIsEmpty()`
+  helpers gate the Missing-mode features.
+- `DB_DEFAULTS.ui.collectionFilter` defaults to `"all"` and is backfilled
+  on old saves.
+- `Data/ItemsBySlot.lua` loads BEFORE `Scan.lua` and the UI modules so
+  the global is always available.
+- Bumped version to 1.21 across the .toc, addon constants, banner, and
+  the release zip.
+
+## [1.20] - 2026-05-22
+
+Day 10 of the ROADMAP polish sprint — sort dropdown (roadmap item #9).
+
+### Added
+- **Sort dropdown** in the right pane, on a new second filter row directly
+  below the Quality button. Six options:
+  - **Favourites + Quality** (default) — preserves the v1.13 behaviour:
+    starred items pinned to the top, then Quality descending, then Name
+    ascending. Nobody's existing list rearranges itself on upgrade.
+  - **Quality (high to low)** — pure quality desc, no favourites pinning.
+  - **Quality (low to high)** — pure quality asc.
+  - **Name (A to Z)** — pure alphabetical.
+  - **Name (Z to A)** — reverse alphabetical.
+  - **Recently scanned** — newest captures first. Items scanned before
+    v1.20 have no `lastSeen` timestamp; they sort to the bottom.
+- The chosen order is persisted as `db.ui.sortOrder` (string key) and
+  reloads on every login.
+
+### Changed
+- The list comparator in `UI_Main.lua` `RefreshList` is now a dispatch
+  table keyed by `sortOrder` (`W.SORT_ORDERS` / `W.SORT_BY_KEY` in
+  `UI_Main.lua`). Only the default order ("favourites_quality") keeps
+  favourites bubbled to the top — power users who want pure Name A-Z
+  opt out by picking a different order.
+- The list pane's top inset moved from `-32` to `-58` to make room for
+  the new second filter row. All 22 list rows still fit (498px > 484px).
+
+### Internal
+- `Scan.lua` `CaptureSlotItems` now stamps a `lastSeen = time()` field on
+  every captured row so the "Recently scanned" sort has something to key
+  on.
+- `Core.lua` `DB_DEFAULTS.ui.sortOrder` defaults to `"favourites_quality"`
+  and is backfilled on old saves alongside the other `ui.*` keys.
+- Bumped version to 1.20 across the .toc, addon constants, banner, and
+  the release zip.
+
 ## [1.19] - 2026-05-22
 
 Tier 5 architecture refactor (roadmap item #32). No user-visible

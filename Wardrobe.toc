@@ -2,17 +2,24 @@
 ## Title: Wardrobe
 ## Notes: Interactive transmog browser for Project Ebonhold's Warpweaver — searchable per-slot lists, 3D paper-doll preview, outfit save/load, server-side Manage Sets integration.
 ## Author: Veronica-Vasilieva
-## Version: 1.19
+## Version: 1.23
 ## SavedVariables: WardrobeDB
 ## X-Category: Interface Enhancements
 ## X-Website: https://github.com/Veronica-Vasilieva/Wardrobe
 ## X-License: Source-available — attribution required, no rebranding, non-commercial. See LICENSE.
 
+Locale\Locale.lua
+Locale\Locale-deDE.lua
+Locale\Locale-frFR.lua
+Locale\Locale-ruRU.lua
+Locale\Locale-esES.lua
 Core.lua
+Data\ItemsBySlot.lua
 Scan.lua
 Apply.lua
 ServerSets.lua
 UI_Main.lua
+UI_Settings.lua
 UI_Outfits.lua
 Minimap.lua
 Sharing.lua
