@@ -2,7 +2,7 @@
 ## Title: Wardrobe
 ## Notes: Interactive transmog browser for Project Ebonhold's Warpweaver — searchable per-slot lists, 3D paper-doll preview, outfit save/load, server-side Manage Sets integration.
 ## Author: Veronica-Vasilieva
-## Version: 1.17
+## Version: 1.18
 ## SavedVariables: WardrobeDB
 ## X-Category: Interface Enhancements
 ## X-Website: https://github.com/Veronica-Vasilieva/Wardrobe

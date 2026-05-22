@@ -51,6 +51,14 @@ server's Manage Sets feature.
 - **Custom background art** behind the wardrobe window (purple/gold
   transmog scene). Column backdrops are kept at moderate alpha so the
   art is visible without sacrificing foreground readability.
+- **Outfit sharing via chat** — right-click any saved outfit in the
+  dropdown for a Load / Share / Delete menu. Share opens a popup
+  showing the compact `WBS1:...` code with Ctrl+C-to-copy + direct
+  post buttons (Say / Party / Guild). Recipients see the code as a
+  clickable purple/gold link in their chat — one click opens the
+  import confirmation. Slash variants: `/wb share <Outfit Name>`
+  and `/wb import <code>`. Apply still requires the Warpweaver, but
+  the outfit save/import doesn't.
 - **Right-click context menu on rows** — Apply, Try On (preview),
   Favourite/Unfavourite, and **Hide from List**, in one place. The
   Hide-from-List option buries entries you never want to see (low-tier
@@ -258,6 +266,8 @@ reuses the cache (rescan every 30 minutes automatically, or
 | `/wb debug` | Toggle verbose chat logging (per-page gossip option dump during scans / apply flows) |
 | `/wb minimap` | Show / hide the minimap button |
 | `/wb minimap reset` | Re-centre the minimap button to its default position |
+| `/wb share <Outfit Name>` | Open the share popup for a saved outfit (case-insensitive name match) |
+| `/wb import <code>` | Import an outfit from a `WBS1:...` code (or click a code in chat) |
 | `/wb npcname <Name>` | Register an alias if your server uses a different name than "Warpweaver" |
 
 ## Server requirements

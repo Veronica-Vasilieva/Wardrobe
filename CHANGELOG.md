@@ -1,5 +1,51 @@
 # Wardrobe — changelog
 
+## [1.18] - 2026-05-22
+
+Day 8 of the ROADMAP polish sprint.
+
+### Added
+- **Outfit sharing via chat** (roadmap item #26).
+  - **Right-click an outfit** in the outfit dropdown to open a small
+    Load / Share / Delete context menu — same purple/gold visual
+    pattern as the row context menu in v1.17. Zero new buttons on the
+    main wardrobe frame; the feature lives inside the existing dropdown.
+  - **Share popup** shows the encoded code in a selectable EditBox
+    (Ctrl+C to copy) plus three direct-post buttons: **Say**, **Party**,
+    **Guild**. Posting to Party/Guild when not in one gives an explicit
+    error rather than failing silently.
+  - **`/wb share <Outfit Name>`** posts the share popup for a named
+    outfit. Case-insensitive lookup, exact name match.
+  - **`/wb import <code>`** decodes any `WBS1:...` code and opens an
+    import confirmation popup showing the outfit name, slot count, and
+    the name it'll be saved under (auto-suffixed with " (imported)" /
+    " (imported 2)" / etc. on collision so existing outfits are never
+    overwritten).
+  - **Clickable chat codes**. The addon hooks each ChatFrame so any
+    `WBS1:...` string appearing in chat becomes a clickable purple/gold
+    hyperlink labelled "Wardrobe: <outfit name>". Clicking opens the
+    import popup pre-filled — recipients don't have to copy-paste the
+    long code manually.
+- The `?` info badge now lists the new slash commands plus the
+  "right-click outfit" hint.
+
+### Internal
+- New `ui.EncodeOutfit(outfit) -> string` and `ui.DecodeOutfit(s) ->
+  outfit | nil, err`. Format: `WBS1:<urlenc-name>~<sid>:<entry>~...`
+  with numeric entries inline and string entries prefixed with `s` +
+  URL-encoding. Slots emitted in sorted order for deterministic
+  encoding. Heavy validation on decode since the source is untrusted
+  chat input — length caps, slot-ID whitelist via `SLOT_BY_ID`, entry
+  type/length checks.
+- New `ui.UniqueOutfitName(base)` resolves name collisions on import.
+- New share/import popups built as custom frames (not StaticPopup —
+  StaticPopup's `editBox` field has a known 3.3.5a-specific bug
+  documented in CLAUDE.md).
+- New `InstallChatHooks()` hooks `ChatFrame1..10:AddMessage` to rewrite
+  `WBS1:` strings into `|Hwardrobe:...|h` hyperlinks, and hooks
+  `SetItemRef` to intercept clicks. Idempotent — re-running on an
+  already-hooked frame is a no-op.
+
 ## [1.17] - 2026-05-22
 
 Day 7 of the ROADMAP polish sprint.

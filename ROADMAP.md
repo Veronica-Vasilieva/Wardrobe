@@ -129,10 +129,14 @@ Bigger value adds. Each warrants design discussion before coding.
     *Why:* Fun + helps players discover items they've forgotten about.
     Button: "Surprise me" rolls a random appearance per slot, stages
     the preview.
-26. **Outfit sharing via chat.** [L]
-    *Why:* Players want to share looks. `/wb share Tank PvP` posts a
-    compact encoded string. Receiver pastes into a search-style box to
-    import.
+26. ~~**Outfit sharing via chat.**~~ ✅ Done in v1.18. Right-click an
+    outfit in the dropdown for a Load / Share / Delete context menu;
+    Share opens a popup with the code (Ctrl+C to copy) plus Say /
+    Party / Guild post buttons. `/wb share <Name>` and `/wb import
+    <code>` slash variants. ChatFrame hook rewrites any `WBS1:...`
+    string into a clickable purple/gold hyperlink that opens the
+    import popup pre-filled. Format: `WBS1:<urlenc-name>~<sid>:<entry>
+    ~...` with strict validation on decode.
 27. **Compare two outfits side-by-side.** [L]
     *Why:* Hard decisions between two looks. Two doll frames in a
     compare overlay.
@@ -211,22 +215,47 @@ deeper work:
    ✅ shipped as v1.14.
 5. ~~**Day 5** — item 33 (build script) so future releases stop being
    manual~~ ✅ shipped (build_release.py at repo root).
-6. **Day 6** — item 24 (minimap button)
-7. **Day 7** — item 11 (right-click context menu)
+6. ~~**Day 6** — item 24 (minimap button)~~ ✅ shipped as v1.16.
+7. ~~**Day 7** — item 11 (right-click context menu) + Hide-from-List
+   filter + Show-hidden toggle~~ ✅ shipped as v1.17.
+8. ~~**Day 8** — item 26 (outfit sharing via chat)~~ ✅ shipped as
+   v1.18.
 
-After that the bigger items (compare mode, outfit sharing, settings
-panel, localization) can be picked up individually.
+After that the remaining bigger items (compare mode, settings panel,
+sort dropdown, keyboard nav, localization) can be picked up
+individually.
 
 ## Status
 
-**Shipped so far (14 items + 1 extra):**
-- Tier 1 — Hardening: #1, #2, #3, #4, #5
-- Tier 2 — Quality-of-life: #7, #8, #10, #11, #13, #14
-- Tier 3 — UI polish: #19
-- Tier 4 — New features: #24
-- Tier 5 — Architecture: #33
+**Shipped so far (15 items + 1 extra), across v1.11 → v1.18:**
+- Tier 1 — Hardening (5/6): #1, #2, #3, #4, #5
+- Tier 2 — Quality-of-life (6/8): #7, #8, #10, #11, #13, #14
+- Tier 3 — UI polish (1/9): #19
+- Tier 4 — New features (2/8): #24, #26
+- Tier 5 — Architecture (1/5): #33
 - **Extras** (not originally listed): right-click slot tab to clear
   that slot's preview (v1.15)
+
+**Release-by-release:**
+- **v1.11** — Day 1: HIDE on enchant slots (#1), `UIErrorsFrame`
+  routing (#2), staged-slot tab badges (#4), search persistence
+  verified (#5), gold-tint enchant rows (#19).
+- **v1.12** — Day 2: search debounce (#3), Restore-Original confirm
+  popup (#14), bottom-bar Apply Preview shortcut (#13).
+- **v1.13** — Day 3: favourites system with star widget + sort-to-top
+  (#7).
+- **v1.14** — Day 4: hide-already-applied toggle (#8), search clear
+  X button (#10).
+- **v1.15** — Extras: right-click slot tab clears that slot's preview
+  only; slot-tab tooltips.
+- **v1.16** — Day 6: self-contained minimap button — drag-around-rim,
+  left-click toggle, right-click hide, `/wb minimap [reset]` (#24).
+- **v1.17** — Day 7: right-click row context menu (#11) plus the
+  Hide-from-List filter and Show-hidden toggle.
+- **v1.18** — Day 8: outfit sharing via chat (#26) — right-click
+  outfit context menu (Load/Share/Delete), `/wb share` + `/wb import`
+  slash subcommands, ChatFrame hook turning `WBS1:` codes into
+  clickable hyperlinks.
 
 ---
 
