@@ -159,10 +159,12 @@ Bigger value adds. Each warrants design discussion before coding.
 
 Pays off in iteration speed for everything above.
 
-32. **Split Wardrobe.lua into multiple files.** [L]
-    *Why:* It's currently ~2200 lines. Split into `Core.lua`, `Scan.lua`,
-    `UI.lua`, `Outfits.lua`, `ServerSets.lua`. Easier diffs, easier
-    onboarding.
+32. ~~**Split Wardrobe.lua into multiple files.**~~ ✅ Done in v1.19.
+    Split into nine modules (`Core.lua`, `Scan.lua`, `Apply.lua`,
+    `ServerSets.lua`, `UI_Main.lua`, `UI_Outfits.lua`, `Minimap.lua`,
+    `Sharing.lua`, `Wardrobe.lua` entry). Every file is under 1,000
+    lines; cross-file state lives on a private `W` namespace from
+    `local _, W = ...` so the global env stays clean.
 33. ~~**Build script.**~~ ✅ Done — `build_release.py` lives at repo
     root. `python build_release.py` builds the zip in `dist/`;
     `python build_release.py --release` does the full GitHub flow
@@ -220,6 +222,8 @@ deeper work:
    filter + Show-hidden toggle~~ ✅ shipped as v1.17.
 8. ~~**Day 8** — item 26 (outfit sharing via chat)~~ ✅ shipped as
    v1.18.
+9. ~~**Day 9** — item 32 (split Wardrobe.lua into multiple files)~~
+   ✅ shipped as v1.19.
 
 After that the remaining bigger items (compare mode, settings panel,
 sort dropdown, keyboard nav, localization) can be picked up
@@ -227,12 +231,12 @@ individually.
 
 ## Status
 
-**Shipped so far (15 items + 1 extra), across v1.11 → v1.18:**
+**Shipped so far (16 items + 1 extra), across v1.11 → v1.19:**
 - Tier 1 — Hardening (5/6): #1, #2, #3, #4, #5
 - Tier 2 — Quality-of-life (6/8): #7, #8, #10, #11, #13, #14
 - Tier 3 — UI polish (1/9): #19
 - Tier 4 — New features (2/8): #24, #26
-- Tier 5 — Architecture (1/5): #33
+- Tier 5 — Architecture (2/5): #32, #33
 - **Extras** (not originally listed): right-click slot tab to clear
   that slot's preview (v1.15)
 
@@ -256,6 +260,9 @@ individually.
   outfit context menu (Load/Share/Delete), `/wb share` + `/wb import`
   slash subcommands, ChatFrame hook turning `WBS1:` codes into
   clickable hyperlinks.
+- **v1.19** — Day 9: architecture refactor (#32) — split
+  `Wardrobe.lua` into nine focused modules under a private addon
+  namespace (`local _, W = ...`); no user-visible behaviour changes.
 
 ---
 

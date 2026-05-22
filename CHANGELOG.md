@@ -1,5 +1,42 @@
 # Wardrobe — changelog
 
+## [1.19] - 2026-05-22
+
+Tier 5 architecture refactor (roadmap item #32). No user-visible
+behaviour changes — every feature from v1.18 works identically.
+
+### Changed
+- **Split the 3,800-line `Wardrobe.lua` into nine focused modules.**
+  Cross-file state lives on a private addon namespace (`local _, W = ...`)
+  so the global environment stays clean. Load order is fixed in
+  `Wardrobe.toc`:
+  - **`Core.lua`** — constants, SavedVariables, logging, gossip parsing,
+    GossipFrame suppression, and the shared `MakeBackdrop` helper.
+  - **`Scan.lua`** — async gossip scan state machine and the shared
+    click driver (`W.ScheduleClick`) used by every other gossip flow.
+  - **`Apply.lua`** — apply/hide flow, batch actions (Save/Cancel
+    Pending, Restore Original), the preview→apply queue, and the
+    item-cache warming tooltip pings.
+  - **`ServerSets.lua`** — server-side Manage Sets driver (Use / Save /
+    Delete).
+  - **`UI_Main.lua`** — main wardrobe window: frame, slot tabs, search,
+    quality filter, list rows, and bottom action bar.
+  - **`UI_Outfits.lua`** — doll preview, outfit save/load/delete, row
+    context menu, StaticPopup dialogs, and the `ShowWardrobeUI` entry.
+  - **`Minimap.lua`** — self-contained minimap button.
+  - **`Sharing.lua`** — outfit encode/decode, share/import popups,
+    outfit-row context menu, chat-frame hooks for WBS1: links.
+  - **`Wardrobe.lua`** — slim entry point: event dispatch and slash
+    commands.
+
+### Internal
+- Every file is under 1,000 lines; the largest (`UI_Main.lua`) is 997.
+- Forward declarations for `ShowWardrobeUI`, `CreateMinimapButton`,
+  `InstallChatHooks`, `BuildWarmQueue` are gone — they're now ordinary
+  `W.foo` entries resolved at call time.
+- Bumped version to 1.19 across the .toc, addon constants, and the
+  release zip.
+
 ## [1.18] - 2026-05-22
 
 Day 8 of the ROADMAP polish sprint.
