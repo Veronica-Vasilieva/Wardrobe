@@ -16,7 +16,7 @@ local addonName, W = ...
 
 W.ADDON         = "Wardrobe"
 W.ADDON_NAME    = "Wardrobe"
-W.ADDON_VERSION = "1.23"
+W.ADDON_VERSION = "1.24"
 W.ADDON_AUTHOR  = "Veronica-Vasilieva"
 W.ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 W.ADDON_IDENT   = W.ADDON_NAME .. " v" .. W.ADDON_VERSION .. " by " .. W.ADDON_AUTHOR
@@ -56,6 +56,11 @@ local SLOTS = {
     {id=16, key="mainhand",  label="Main hand"},
     {id=97, key="ohench",    label="Off hand enchant",  isEnchant=true},
     {id=17, key="offhand",   label="Off hand"},
+    -- Ranged slot (v1.24): bows/crossbows/guns (hunters & warriors) and
+    -- wands (casters). Real WoW slot id 18. Single slot covers all three
+    -- ranged categories because InventorySlotId 18 is the same physical
+    -- slot regardless of weapon type.
+    {id=18, key="ranged",    label="Ranged"},
     {id=19, key="tabard",    label="Tabard"},
 }
 W.SLOTS = SLOTS
@@ -114,8 +119,10 @@ local DB_DEFAULTS = {
         showHidden     = false,
         sortOrder      = "favourites_quality",  -- v1.20
         collectionFilter = "all",                -- v1.21 -- "all" / "owned" / "missing"
+        favouritesScope = "character",           -- v1.24 -- "character" / "account"
         minimap        = { hide = false, angle = 210 },
     },
+    accountFavourites = {},   -- v1.24 -- {[entry]=true} shared across alts
     debug        = false,
 }
 W.DB_DEFAULTS = DB_DEFAULTS
@@ -147,6 +154,8 @@ function W.GetDB()
     if WardrobeDB.ui.showHidden     == nil then WardrobeDB.ui.showHidden     = false end
     if WardrobeDB.ui.sortOrder      == nil then WardrobeDB.ui.sortOrder      = "favourites_quality" end
     if WardrobeDB.ui.collectionFilter == nil then WardrobeDB.ui.collectionFilter = "all" end
+    if WardrobeDB.ui.favouritesScope == nil then WardrobeDB.ui.favouritesScope = "character" end
+    WardrobeDB.accountFavourites = WardrobeDB.accountFavourites or {}
     -- Minimap button state (v1.16+). Saves are nested so old toons that
     -- already had a ui table get a fresh defaults object on first read.
     WardrobeDB.ui.minimap = WardrobeDB.ui.minimap or {}
@@ -184,6 +193,50 @@ function W.GetCharDB()
     if not db.chars[key].applied       then db.chars[key].applied       = {} end
     if not db.chars[key].hiddenEntries then db.chars[key].hiddenEntries = {} end
     return db.chars[key]
+end
+
+-------------------------------------------------------------------------------
+-- FAVOURITES SCOPE (v1.24)
+--
+-- Favourites can live in either the per-character DB (default, original
+-- behaviour from v1.13) or the account-shared DB so the same set of pinned
+-- looks is visible on every alt. Switching scope MERGES the current scope's
+-- set into the target scope (lossless union) so flipping the toggle never
+-- drops a favourite the user already marked.
+-------------------------------------------------------------------------------
+
+function W.GetFavouritesTable()
+    local db = W.GetDB()
+    if (db.ui.favouritesScope or "character") == "account" then
+        db.accountFavourites = db.accountFavourites or {}
+        return db.accountFavourites
+    end
+    local char = W.GetCharDB()
+    char.favourites = char.favourites or {}
+    return char.favourites
+end
+
+-- Toggle a single entry's favourite flag, writing to whichever scope is
+-- currently active.
+function W.ToggleFavouriteEntry(entry)
+    if entry == nil then return end
+    local tbl = W.GetFavouritesTable()
+    if tbl[entry] then tbl[entry] = nil else tbl[entry] = true end
+end
+
+-- Switch the active favourites scope, merging the current scope's set into
+-- the destination so nothing is lost. `newScope` is "character" or "account".
+function W.SetFavouritesScope(newScope)
+    if newScope ~= "character" and newScope ~= "account" then return end
+    local db        = W.GetDB()
+    local oldScope  = db.ui.favouritesScope or "character"
+    if newScope == oldScope then return end
+    local oldTable  = W.GetFavouritesTable()
+    db.ui.favouritesScope = newScope
+    local newTable  = W.GetFavouritesTable()
+    for entry, _ in pairs(oldTable) do
+        newTable[entry] = true     -- union, never overwrites
+    end
 end
 
 -------------------------------------------------------------------------------

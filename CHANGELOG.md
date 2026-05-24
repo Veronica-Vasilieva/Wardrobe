@@ -1,5 +1,61 @@
 # Wardrobe — changelog
 
+## [1.24] - 2026-05-23
+
+Player feedback round one — four fixes from in-game reports.
+
+### Added
+- **Ranged weapon slot** (id 18, label `Ranged`). Covers bows, crossbows,
+  guns, wands, and thrown weapons — single physical slot regardless of
+  weapon type. Run `/wb rescan` after upgrading to populate it from the
+  Warpweaver gossip. `Data/ItemsBySlot.lua` and the
+  `tools/build_items_list.py` generator both add the slot, with
+  `InventoryType` mappings for `15` (bow), `25` (thrown), and `26`
+  (gun/crossbow/wand).
+- **Account-wide favourites toggle** in the settings panel
+  (Visibility → "Share favourites across all my characters"). Default
+  remains per-character (v1.13 behaviour). When ON, favourites live in
+  a new `db.accountFavourites` table shared across all alts. Switching
+  in either direction **merges** the current scope's favourites into
+  the destination (lossless union), so flipping the toggle never drops
+  a pin.
+- **Staged enchant indicator** below the doll preview. Since DressUpModel
+  in WoW 3.3.5a can't render enchant illusions (true client limitation
+  — server applies them fine), the preview label now spells out staged
+  enchants by weapon: e.g. `Enchants (not shown on doll): Ma: Crusader,
+  Of: Mongoose`. Makes it clear the enchant IS staged and will commit,
+  even though it doesn't appear on the model.
+
+### Fixed
+- **Doll camera no longer resets when clicking a new item.** Previously
+  every preview click called `SetUnit("player")` to reset the model,
+  which silently clobbered facing/zoom even when we tried to save and
+  restore them (the async model load raced with our `SetPosition`
+  call). The new approach:
+  - Tracks camera state in `ui.dollCam`, updated by the rotate / pan /
+    wheel handlers as the user drags.
+  - Only calls `SetUnit` when the new preview state needs to *remove*
+    a slot from the previous state (no other way to clear a `TryOn`).
+    For pure adds/replacements, items are `TryOn`'d additively and the
+    camera is untouched.
+  - When a reset IS needed, camera is restored from `ui.dollCam` (not
+    from `GetPosition`) so the race is gone.
+
+### Changed
+- `W.GetFavouritesTable()` / `W.ToggleFavouriteEntry()` /
+  `W.SetFavouritesScope()` helpers in `Core.lua` centralise the
+  favourites read/write path. UI_Main `RefreshList`, UI_Outfits
+  `ToggleFavourite`, and the row context menu all go through them.
+- `Wardrobe.toc` slot order: `Ranged` sits between `Off hand` and
+  `Tabard`, matching the typical gossip-menu order on Rochet2-style
+  servers.
+
+### Internal
+- `DB_DEFAULTS` gains `ui.favouritesScope = "character"` and
+  `accountFavourites = {}`. Both are backfilled on old saves.
+- Bumped version to 1.24 across the .toc, addon constants, banner, and
+  the release zip.
+
 ## [1.23] - 2026-05-23
 
 Day 13 of the ROADMAP polish sprint — localisation framework

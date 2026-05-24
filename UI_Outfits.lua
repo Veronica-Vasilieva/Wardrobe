@@ -22,18 +22,61 @@ local previewSlots = W.previewSlots
 
 function ui.UpdatePreviewLabel()
     if not ui.previewLbl then return end
-    local nTransmog, nHide = 0, 0
-    for _, v in pairs(previewSlots) do
-        if v == "HIDE" then nHide = nHide + 1 else nTransmog = nTransmog + 1 end
+    -- Count staged previews split by type so the label can break out
+    -- enchants explicitly. Enchants don't show on the doll model (3.3.5a
+    -- DressUpModel can't render enchant illusions) so we call them out so
+    -- the user knows they're staged and will be applied.
+    local nTransmog, nHide, nEnchant = 0, 0, 0
+    local stagedEnchants = {}     -- list of {label, name} for the detail line
+    local char = GetCharDB()
+    for slotId, v in pairs(previewSlots) do
+        if IsEnchantSlot(slotId) then
+            if v ~= "HIDE" then
+                nEnchant = nEnchant + 1
+                local slot = W.SLOT_BY_ID[slotId]
+                -- Resolve enchant name from the collection (entries are
+                -- strings for enchants).
+                local items = char.collection[slotId]
+                local enchName = tostring(v)
+                if items then
+                    for _, it in ipairs(items) do
+                        if it.entry == v then enchName = it.name or enchName; break end
+                    end
+                end
+                table.insert(stagedEnchants, {
+                    short = slot and slot.label:sub(1,2):upper() or "EN",
+                    name  = enchName,
+                })
+            else
+                nHide = nHide + 1
+            end
+        elseif v == "HIDE" then
+            nHide = nHide + 1
+        else
+            nTransmog = nTransmog + 1
+        end
     end
-    if nTransmog == 0 and nHide == 0 then
+    if nTransmog == 0 and nHide == 0 and nEnchant == 0 then
         ui.previewLbl:SetText("Previewing current look\nLeft-click to stage, right-click for menu")
         ui.previewLbl:SetTextColor(0.6, 0.6, 0.65)
     else
         local parts = {}
         if nTransmog > 0 then table.insert(parts, nTransmog .. " transmog" .. (nTransmog > 1 and "s" or "")) end
         if nHide     > 0 then table.insert(parts, nHide     .. " hide"     .. (nHide     > 1 and "s" or "")) end
-        ui.previewLbl:SetText(table.concat(parts, " + ") .. " staged\nApply Preview to commit")
+        if nEnchant  > 0 then table.insert(parts, nEnchant  .. " enchant"  .. (nEnchant  > 1 and "s" or "")) end
+        local text = table.concat(parts, " + ") .. " staged\nApply Preview to commit"
+        if nEnchant > 0 then
+            -- Spell out the staged enchants by weapon. Doll can't render
+            -- them but they WILL apply on commit -- mention that so the
+            -- absence on the doll doesn't look like a bug.
+            local bits = {}
+            for _, e in ipairs(stagedEnchants) do
+                table.insert(bits, e.short .. ": " .. e.name)
+            end
+            text = text .. "\n|cffbcbc78Enchants (not shown on doll): " ..
+                table.concat(bits, ", ") .. "|r"
+        end
+        ui.previewLbl:SetText(text)
         ui.previewLbl:SetTextColor(0.95, 0.85, 0.45)
     end
     -- Re-render slot tab counters so the gold "*" badge appears/disappears
@@ -41,40 +84,105 @@ function ui.UpdatePreviewLabel()
     if ui.RefreshTabs then ui.RefreshTabs() end
 end
 
--- Walk previewSlots and TryOn each item's link. Reset to the player's
--- current equipped+transmogged look first via SetUnit("player"). A preview
--- value of "HIDE" tries to undress that slot (best-effort: 3.3.5a may not
--- have UndressSlot, in which case the doll still shows the current item but
--- the preview label still records the pending hide). Enchant pseudo-slots
+-- Walk previewSlots and TryOn each item's link. Enchant pseudo-slots
 -- (synthetic IDs 96/97) are skipped -- DressUpModel can't render enchant
--- illusions, but the preview label still tracks them so the user knows
--- what's staged.
+-- illusions in WoW 3.3.5a, but the preview label still tracks them so the
+-- user knows what's staged.
+--
+-- v1.24: previously this function always called SetUnit("player") to reset
+-- the model before re-applying previews. That clobbered the user's camera
+-- (facing + zoom) on every click. Now we ONLY call SetUnit when the new
+-- preview state requires removing a slot the previous state had (i.e.,
+-- something was un-staged). For pure additions / replacements, TryOn is
+-- called additively without a reset -- so the camera stays put.
+--
+-- ui.lastPreviewSlots is a shallow copy of previewSlots from the previous
+-- RefreshDoll call. ui.dollCam holds the user-controlled camera values,
+-- updated by the rotate/pan/wheel handlers in UI_Main.lua.
 function ui.RefreshDoll()
     if not ui.doll then return end
-    -- Preserve user-adjusted camera across the SetUnit reset, otherwise each
-    -- preview click snaps the model back to default facing/zoom.
-    local facing = ui.doll:GetFacing() or 0
-    local px, py, pz = ui.doll:GetPosition()
-    ui.doll:SetUnit("player")
-    ui.doll:SetFacing(facing)
-    if px and py and pz then ui.doll:SetPosition(px, py, pz) end
     local char = GetCharDB()
-    for slotId, entry in pairs(previewSlots) do
-        if IsEnchantSlot(slotId) then
-            -- Enchant illusion -- no doll preview, just stays staged.
-        elseif entry == "HIDE" then
-            pcall(function() ui.doll:UndressSlot(slotId) end)
-        else
-            local link
-            local items = char.collection[slotId]
-            if items then
-                for _, it in ipairs(items) do
-                    if it.entry == entry then link = it.link; break end
-                end
-            end
-            ui.doll:TryOn(link or ("item:" .. entry))
+
+    -- Detect whether we MUST reset the model:
+    --   * Any slot present in lastPreviewSlots but not in the new state has
+    --     been "un-staged" -- the only way to remove a TryOn'd item from
+    --     DressUpModel is to SetUnit (no per-slot UndressItem).
+    --   * Any slot whose value changed from "HIDE" to a real entry, since
+    --     UndressSlot can't be reversed without resetting.
+    local needsReset = false
+    local last = ui.lastPreviewSlots or {}
+    for slotId, prevVal in pairs(last) do
+        local curVal = previewSlots[slotId]
+        if curVal == nil then
+            needsReset = true; break
+        elseif prevVal == "HIDE" and curVal ~= "HIDE" then
+            needsReset = true; break
         end
     end
+    -- Edge case: first call ever, dollCam is seeded, nothing to do but
+    -- preserve current state. SetUnit is still safe.
+    if next(last) == nil and next(previewSlots) == nil then
+        -- Nothing changed; just bail out without disturbing the model.
+        ui.lastPreviewSlots = {}
+        return
+    end
+
+    if needsReset then
+        ui.doll:SetUnit("player")
+        -- Re-apply camera from our tracked state, NOT from GetPosition()
+        -- (which can race with SetUnit's async model load).
+        local cam = ui.dollCam
+        if cam then
+            if cam.facing then ui.doll:SetFacing(cam.facing) end
+            if cam.px and cam.py and cam.pz then
+                ui.doll:SetPosition(cam.px, cam.py, cam.pz)
+            end
+        end
+        -- After a reset we have to re-apply EVERY preview slot, not just
+        -- the diff, because the model is back to bare equipped state.
+        for slotId, entry in pairs(previewSlots) do
+            if IsEnchantSlot(slotId) then
+                -- Enchant illusion -- no doll preview.
+            elseif entry == "HIDE" then
+                pcall(function() ui.doll:UndressSlot(slotId) end)
+            else
+                local link
+                local items = char.collection[slotId]
+                if items then
+                    for _, it in ipairs(items) do
+                        if it.entry == entry then link = it.link; break end
+                    end
+                end
+                ui.doll:TryOn(link or ("item:" .. entry))
+            end
+        end
+    else
+        -- Additive path: only apply the diff. New + changed slots get a
+        -- fresh TryOn (which replaces any prior TryOn on the same slot).
+        -- Camera is untouched.
+        for slotId, entry in pairs(previewSlots) do
+            if last[slotId] ~= entry then
+                if IsEnchantSlot(slotId) then
+                    -- skip; no doll render
+                elseif entry == "HIDE" then
+                    pcall(function() ui.doll:UndressSlot(slotId) end)
+                else
+                    local link
+                    local items = char.collection[slotId]
+                    if items then
+                        for _, it in ipairs(items) do
+                            if it.entry == entry then link = it.link; break end
+                        end
+                    end
+                    ui.doll:TryOn(link or ("item:" .. entry))
+                end
+            end
+        end
+    end
+
+    -- Snapshot for next call's diff.
+    ui.lastPreviewSlots = {}
+    for k, v in pairs(previewSlots) do ui.lastPreviewSlots[k] = v end
 end
 
 function ui.PreviewItem(slotId, itemData)
@@ -93,18 +201,14 @@ function ui.ClearSlotPreview(slotId)
     ui.UpdatePreviewLabel()
 end
 
--- Toggle the favourite flag for an item/enchant entry. Favourites are
--- per-character (each alt has its own go-to looks) and persist in the
--- SavedVariables.
+-- Toggle the favourite flag for an item/enchant entry. The destination
+-- table depends on `db.ui.favouritesScope`: "character" (v1.13 default --
+-- each alt has its own pinned set) or "account" (v1.24 -- shared across
+-- alts). Writes go through W.ToggleFavouriteEntry so the scope dispatch
+-- lives in one place.
 function ui.ToggleFavourite(entry)
     if entry == nil then return end
-    local char = GetCharDB()
-    char.favourites = char.favourites or {}
-    if char.favourites[entry] then
-        char.favourites[entry] = nil
-    else
-        char.favourites[entry] = true
-    end
+    W.ToggleFavouriteEntry(entry)
     ui.RefreshList()
 end
 
@@ -211,9 +315,8 @@ function ui.ShowRowContextMenu(slotId, itemData)
     local m = CreateRowMenu()
     local char = GetCharDB()
     char.hiddenEntries = char.hiddenEntries or {}
-    char.favourites    = char.favourites    or {}
-    local isFav    = char.favourites[itemData.entry]    and true or false
-    local isHidden = char.hiddenEntries[itemData.entry] and true or false
+    local isFav    = W.GetFavouritesTable()[itemData.entry]    and true or false
+    local isHidden = char.hiddenEntries[itemData.entry]        and true or false
 
     m.headIcon:SetTexture(itemData.icon or "Interface\\Icons\\INV_Misc_QuestionMark")
     local qc = QUALITY_COLOR[itemData.quality or 1] or {1,1,1}

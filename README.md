@@ -18,7 +18,8 @@ server's Manage Sets feature.
 - **Per-slot searchable lists** of every appearance you've collected,
   populated by an async scan that walks the gossip menu in the
   background. Items are quality-coloured; tooltips show full item
-  details. Name search + quality filter cycle through the list.
+  details. Name search + quality filter + sort dropdown + collection
+  filter (All / Owned / Missing) cycle through the list.
 - **Interactive 3D paper doll** with the standard `DressUpModel`
   controls — left-drag rotates, right-drag pans vertically, mouse wheel
   zooms, and a **Reset View** button on the doll restores the default
@@ -70,6 +71,24 @@ server's Manage Sets feature.
   inspection. Left-click toggles, right-click hides, drag-around-rim
   to reposition; restore a hidden button with `/wb minimap`. Apply
   chains still happen at the NPC.
+- **Settings panel** opened via the gold `[S]` gear button (top-right
+  of the wardrobe) or `/wb settings`. Five grouped sections: Filters &
+  sort cross-refs, Visibility checkboxes, Behaviour (live scan-step-
+  delay slider for laggy servers — no `/reload` needed), recognised
+  NPC names with add/remove, and a Debug toggle.
+- **Sort dropdown** on a second filter row directly below Quality.
+  Six orders: Favourites + Quality (default, preserves the v1.13
+  bubble-to-top behaviour), Quality high-to-low, Quality low-to-high,
+  Name A-Z, Name Z-A, Recently scanned. Persisted per-character.
+- **Missing-collections filter** — cycle button beneath Hide Slot that
+  rotates All / Owned only / Missing only. The Missing mode shows
+  uncollected appearances from a `Data/ItemsBySlot.lua` master list
+  (dimmed; Apply blocked, Try On still works). The list ships empty —
+  regenerate it from a server item DB via `tools/build_items_list.py`
+  if you want the feature populated.
+- **Localised UI** — `Locale/` folder with the canonical enUS keys plus
+  translation stubs for de/fr/ru/es. Untranslated strings fall back to
+  English; community translations welcome via pull request.
 - **In-game help** — hover the **?** badge in the top-right of the
   wardrobe for the addon name + version, a one-paragraph About, the
   full slash command list, control reference, license summary, and
@@ -95,8 +114,8 @@ Open the addon's releases page in any browser:
 **https://github.com/Veronica-Vasilieva/Wardrobe/releases**
 
 Click the **green "Latest" tag** at the top of the page (currently
-`v1.10`). Under that release's **Assets** section, click
-**`Wardrobe-v1.10.zip`** to download it. The file will land in your
+`v1.23`). Under that release's **Assets** section, click
+**`Wardrobe-v1.23.zip`** to download it. The file will land in your
 `Downloads` folder.
 
 ### 3. Find your AddOns folder
@@ -128,7 +147,7 @@ exist (it's case-insensitive but the spelling matters).
 
 ### 4. Extract the zip
 
-Right-click `Wardrobe-v1.10.zip` (in your Downloads folder) and choose
+Right-click `Wardrobe-v1.23.zip` (in your Downloads folder) and choose
 **Extract All...** in the menu. In the dialog that pops up:
 
 - Click **Browse...** and navigate to the `Interface\AddOns` folder you
@@ -145,11 +164,28 @@ that the final layout looks exactly like this:
       Wardrobe\
         CHANGELOG.md
         LICENSE
+        README.md
+        Wardrobe.toc
+        Core.lua
+        Scan.lua
+        Apply.lua
+        ServerSets.lua
+        UI_Main.lua
+        UI_Settings.lua
+        UI_Outfits.lua
+        Minimap.lua
+        Sharing.lua
+        Wardrobe.lua
+        Data\
+          ItemsBySlot.lua
+        Locale\
+          Locale.lua
+          Locale-deDE.lua
+          Locale-frFR.lua
+          Locale-ruRU.lua
+          Locale-esES.lua
         Media\
           Background.tga
-        README.md
-        Wardrobe.lua
-        Wardrobe.toc
 ```
 
 ### 5. Watch out for the most common mistake
@@ -172,7 +208,7 @@ sit directly inside a folder called `Wardrobe`, not inside
 `Wardrobe\Wardrobe`.
 
 Equally, **the folder must be named `Wardrobe` exactly** — not
-`Wardrobe-v1.10`, not `Wardrobe-main`, not `Wardrobe (1)`. If yours has
+`Wardrobe-v1.23`, not `Wardrobe-main`, not `Wardrobe (1)`. If yours has
 the version or any extra text in the name, right-click it, choose
 **Rename**, and change it to just `Wardrobe`.
 
@@ -188,7 +224,7 @@ Log in to a character. If the install worked, you'll see this line in
 your chat window within a second or two:
 
 ```
-Wardrobe: v1.10 by Veronica-Vasilieva loaded. Talk to a Warpweaver to begin.
+Wardrobe: v1.23 by Veronica-Vasilieva loaded. Talk to a Warpweaver to begin.
 ```
 
 ### 7. Try it out
@@ -204,7 +240,7 @@ of every control and command.
 
 ### Troubleshooting
 
-- **No "Wardrobe: v1.10 loaded" message at login.** WoW didn't find the
+- **No "Wardrobe: v1.23 loaded" message at login.** WoW didn't find the
   addon. The folder is in the wrong place or has the wrong name. Recheck
   the layout in step 4 — `Wardrobe.toc` and `Wardrobe.lua` must be
   directly inside a folder called `Wardrobe`, which itself is directly
@@ -234,7 +270,9 @@ reuses the cache (rescan every 30 minutes automatically, or
 | Where | Action | What happens |
 |---|---|---|
 | Item row | Left-click | Stages on the doll (no server cost) |
-| Item row | Right-click | Applies immediately |
+| Item row | Right-click | Opens menu: Apply / Try On / Favourite / Hide from List |
+| Item row | Click the gold star | Toggle favourite (pinned to top with the default sort) |
+| Slot tab | Right-click | Clear the staged preview for just that slot |
 | Paper doll | Left-drag | Rotate model |
 | Paper doll | Right-drag | Pan camera vertically |
 | Paper doll | Mouse wheel | Zoom in/out |
@@ -251,16 +289,31 @@ reuses the cache (rescan every 30 minutes automatically, or
   lives server-side so it survives reinstalls
 - **Hide _Slot_** — stages a hide for the active slot (committed by
   Apply Preview)
-- **Apply All (Save Pending)** — commits any server-side pending
-  transmogs
+- **Save Pending** — commits any server-side pending transmogs
 - **Cancel Pending** / **Restore Original** — server-side
 - **Server Menu** — hand off to the native gossip frame
+- **Settings (gold `[S]` gear button, top-right)** — opens the settings
+  panel with five grouped sections (Filters & sort, Visibility,
+  Behaviour, NPC names, Debug). Also opens with `/wb settings`.
+
+### Filter row (top of the list)
+
+- **Search** — name-substring filter, debounced. Small "X" clears.
+- **Quality** — cycle button: All / Uncommon+ / Rare+ / Epic+ / ...
+- **Sort** — dropdown: Favourites + Quality (default), Quality desc/asc,
+  Name A-Z / Z-A, Recently scanned. Persisted per-character.
+- **Hide _Slot_** — stages a hide on the active slot.
+- **Collection** — cycle button: All / Owned only / Missing only. The
+  Missing mode shows uncollected items dimmed (requires a populated
+  `Data/ItemsBySlot.lua`; ships empty and falls back to a hint message
+  if not populated).
 
 ### Slash commands
 
 | Command | What it does |
 |---|---|
 | `/wb`, `/wardrobe` | Open / close the wardrobe |
+| `/wb settings`, `/wb config`, `/wb options` | Open the settings panel |
 | `/wb rescan` | Force a full rescan of your collection and server sets |
 | `/wb reset` | Wipe all SavedVariables (requires `/reload`) |
 | `/wb debug` | Toggle verbose chat logging (per-page gossip option dump during scans / apply flows) |
@@ -268,7 +321,7 @@ reuses the cache (rescan every 30 minutes automatically, or
 | `/wb minimap reset` | Re-centre the minimap button to its default position |
 | `/wb share <Outfit Name>` | Open the share popup for a saved outfit (case-insensitive name match) |
 | `/wb import <code>` | Import an outfit from a `WBS1:...` code (or click a code in chat) |
-| `/wb npcname <Name>` | Register an alias if your server uses a different name than "Warpweaver" |
+| `/wb npcname <Name>` | Register an alias if your server uses a different name than "Warpweaver" (or use the Settings panel) |
 
 ## Server requirements
 

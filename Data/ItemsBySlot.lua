@@ -16,7 +16,7 @@
 --
 -- Slot IDs match Wardrobe's internal slot table (see Core.lua SLOTS):
 --   1=Head 3=Shoulders 4=Shirt 5=Chest 6=Waist 7=Legs 8=Feet 9=Wrists
---   10=Hands 15=Back 16=MainHand 17=OffHand 19=Tabard
+--   10=Hands 15=Back 16=MainHand 17=OffHand 18=Ranged 19=Tabard
 --
 -- Enchant slots (96/97) are intentionally not in this file -- enchants are
 -- discovered server-side and have no master list outside the scan.
@@ -39,6 +39,7 @@ WardrobeItemsBySlot = {
     [15] = {},   -- Back
     [16] = {},   -- Main hand
     [17] = {},   -- Off hand
+    [18] = {},   -- Ranged (bow / gun / crossbow / wand / thrown)
     [19] = {},   -- Tabard
 }
 

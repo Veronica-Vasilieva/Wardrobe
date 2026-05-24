@@ -250,6 +250,17 @@ function W.CreateSettingsFrame()
             if W.UpdateMinimapButtonVisibility then W.UpdateMinimapButtonVisibility() end
         end,
         "Hide the small minimap button. /wb minimap toggles this too."))
+    -- v1.24: favourites scope toggle. Checkbox semantics chosen over a
+    -- dropdown because there are only two options. Switching MERGES the
+    -- current scope's favourites into the destination (lossless union) so
+    -- flipping the toggle never drops an existing pin.
+    add(MakeCheckbox(content, "WardrobeSetFavScope", L["Share favourites across all my characters"], f.controls[#f.controls],
+        function() return (GetDB().ui.favouritesScope or "character") == "account" end,
+        function(v)
+            W.SetFavouritesScope(v and "account" or "character")
+            if ui.RefreshList then ui.RefreshList() end
+        end,
+        "When OFF (default), each character keeps its own favourite list. When ON, all your characters share one favourite list -- starring an item on your warrior shows it starred on your mage too. Switching either direction MERGES the lists (lossless), so you can flip this freely without losing anything."))
 
     -- ===== Behaviour =====
     local lastCb = f.controls[#f.controls]
@@ -321,7 +332,9 @@ function W.CreateSettingsFrame()
 
     -- Content height: section sizes are static except the NPC list which
     -- depends on how many names are registered. Recompute on each Show.
-    local STATIC_HEIGHT = 540  -- everything above + below the NPC list
+    -- v1.24 added one checkbox row (favourites scope) so STATIC_HEIGHT
+    -- grew from 540 to 570.
+    local STATIC_HEIGHT = 570  -- everything above + below the NPC list
     f:SetScript("OnShow", function(self)
         for _, c in ipairs(self.controls) do
             if c.refresh then c.refresh() end

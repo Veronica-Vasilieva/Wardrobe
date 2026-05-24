@@ -1,5 +1,5 @@
 -------------------------------------------------------------------------------
--- Wardrobe  v1.23
+-- Wardrobe  v1.24
 -- Copyright (c) 2026 Veronica-Vasilieva and the Wardrobe contributors.
 -- Released under the Wardrobe Source-Available License -- see LICENSE.
 -- Project home: https://github.com/Veronica-Vasilieva/Wardrobe
