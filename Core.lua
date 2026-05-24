@@ -16,7 +16,7 @@ local addonName, W = ...
 
 W.ADDON         = "Wardrobe"
 W.ADDON_NAME    = "Wardrobe"
-W.ADDON_VERSION = "1.24"
+W.ADDON_VERSION = "1.25"
 W.ADDON_AUTHOR  = "Veronica-Vasilieva"
 W.ADDON_URL     = "https://github.com/Veronica-Vasilieva/Wardrobe"
 W.ADDON_IDENT   = W.ADDON_NAME .. " v" .. W.ADDON_VERSION .. " by " .. W.ADDON_AUTHOR

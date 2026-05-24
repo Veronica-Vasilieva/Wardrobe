@@ -539,13 +539,8 @@ function W.CreateMainFrame()
             local x = GetCursorPosition()
             if x ~= self.rotateStart then
                 local dx = (x - self.rotateStart) * 0.01
-                local newFacing = (self:GetFacing() or 0) + dx
-                self:SetFacing(newFacing)
+                self:SetFacing((self:GetFacing() or 0) + dx)
                 self.rotateStart = x
-                -- v1.24: persist camera state so RefreshDoll can restore
-                -- it after SetUnit resets the model.
-                ui.dollCam = ui.dollCam or {}
-                ui.dollCam.facing = newFacing
             end
         end
         if self.panning then
@@ -553,32 +548,27 @@ function W.CreateMainFrame()
             if y ~= self.panStart then
                 local dy = (y - self.panStart) * 0.004
                 local px, py, pz = self:GetPosition()
-                local newPz = (pz or 0) + dy
-                self:SetPosition(px, py, newPz)
+                self:SetPosition(px, py, (pz or 0) + dy)
                 self.panStart = y
-                ui.dollCam = ui.dollCam or {}
-                ui.dollCam.px, ui.dollCam.py, ui.dollCam.pz = px, py, newPz
             end
         end
     end)
     doll:SetScript("OnMouseWheel", function(self, delta)
         local px, py, pz = self:GetPosition()
-        local newPx = (px or 0) + delta * 0.4
-        self:SetPosition(newPx, py, pz)
-        ui.dollCam = ui.dollCam or {}
-        ui.dollCam.px, ui.dollCam.py, ui.dollCam.pz = newPx, py, pz
+        self:SetPosition((px or 0) + delta * 0.4, py, pz)
     end)
 
     -- Snapshot the initial camera so the Reset View button can restore it.
-    -- Also seed ui.dollCam so RefreshDoll has something to restore before
-    -- the user has dragged anything.
+    -- Note: any RefreshDoll call that hits its needsReset path (i.e. a
+    -- preview gets cleared, or a HIDE'd slot un-hidden) will snap the
+    -- camera back to the client's default for a DressUpModel SetUnit --
+    -- the 3.3.5a client doesn't expose a way to defeat that, so we live
+    -- with it. See UI_Outfits.lua RefreshDoll for the full rationale.
     local initialFacing = doll:GetFacing() or 0
     local ipx, ipy, ipz = doll:GetPosition()
-    ui.dollCam = { facing = initialFacing, px = ipx, py = ipy, pz = ipz }
     doll.resetView = function()
         doll:SetFacing(initialFacing)
         doll:SetPosition(ipx or 0, ipy or 0, ipz or 0)
-        ui.dollCam = { facing = initialFacing, px = ipx, py = ipy, pz = ipz }
     end
 
     local resetView = CreateFrame("Button", nil, dollBg, "UIPanelButtonTemplate")

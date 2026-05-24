@@ -84,33 +84,33 @@ function ui.UpdatePreviewLabel()
     if ui.RefreshTabs then ui.RefreshTabs() end
 end
 
--- Walk previewSlots and TryOn each item's link. Enchant pseudo-slots
+-- Walk previewSlots and apply each change to the doll. Enchant pseudo-slots
 -- (synthetic IDs 96/97) are skipped -- DressUpModel can't render enchant
 -- illusions in WoW 3.3.5a, but the preview label still tracks them so the
 -- user knows what's staged.
 --
--- v1.24: previously this function always called SetUnit("player") to reset
--- the model before re-applying previews. That clobbered the user's camera
--- (facing + zoom) on every click. Now we ONLY call SetUnit when the new
--- preview state requires removing a slot the previous state had (i.e.,
--- something was un-staged). For pure additions / replacements, TryOn is
--- called additively without a reset -- so the camera stays put.
+-- Two paths depending on the diff:
+--   * Additive (added/changed slots only, no removals or HIDE->entry
+--     undos): TryOn the new value in place. Camera untouched -- this
+--     covers the common case of the user clicking new items.
+--   * Reset (any slot was un-staged, or a HIDE->entry transition):
+--     SetUnit("player") rebuilds the model so the doll re-renders the
+--     player's actual gear (with server-side transmogs). The 3.3.5a
+--     client snaps the camera back to default whenever a DressUpModel's
+--     unit is reassigned -- SetUnit triggers an async M2 reload that
+--     reinitialises the camera, and this client version exposes no
+--     model-loaded callback to restore the camera once the reload is
+--     done. We accept the snap rather than fight it with frame polls
+--     (which only flicker and don't reliably win the race).
 --
 -- ui.lastPreviewSlots is a shallow copy of previewSlots from the previous
--- RefreshDoll call. ui.dollCam holds the user-controlled camera values,
--- updated by the rotate/pan/wheel handlers in UI_Main.lua.
+-- RefreshDoll call.
 function ui.RefreshDoll()
     if not ui.doll then return end
     local char = GetCharDB()
-
-    -- Detect whether we MUST reset the model:
-    --   * Any slot present in lastPreviewSlots but not in the new state has
-    --     been "un-staged" -- the only way to remove a TryOn'd item from
-    --     DressUpModel is to SetUnit (no per-slot UndressItem).
-    --   * Any slot whose value changed from "HIDE" to a real entry, since
-    --     UndressSlot can't be reversed without resetting.
-    local needsReset = false
     local last = ui.lastPreviewSlots or {}
+
+    local needsReset = false
     for slotId, prevVal in pairs(last) do
         local curVal = previewSlots[slotId]
         if curVal == nil then
@@ -119,30 +119,12 @@ function ui.RefreshDoll()
             needsReset = true; break
         end
     end
-    -- Edge case: first call ever, dollCam is seeded, nothing to do but
-    -- preserve current state. SetUnit is still safe.
-    if next(last) == nil and next(previewSlots) == nil then
-        -- Nothing changed; just bail out without disturbing the model.
-        ui.lastPreviewSlots = {}
-        return
-    end
 
     if needsReset then
         ui.doll:SetUnit("player")
-        -- Re-apply camera from our tracked state, NOT from GetPosition()
-        -- (which can race with SetUnit's async model load).
-        local cam = ui.dollCam
-        if cam then
-            if cam.facing then ui.doll:SetFacing(cam.facing) end
-            if cam.px and cam.py and cam.pz then
-                ui.doll:SetPosition(cam.px, cam.py, cam.pz)
-            end
-        end
-        -- After a reset we have to re-apply EVERY preview slot, not just
-        -- the diff, because the model is back to bare equipped state.
         for slotId, entry in pairs(previewSlots) do
             if IsEnchantSlot(slotId) then
-                -- Enchant illusion -- no doll preview.
+                -- enchant illusion -- no doll render
             elseif entry == "HIDE" then
                 pcall(function() ui.doll:UndressSlot(slotId) end)
             else
@@ -157,13 +139,10 @@ function ui.RefreshDoll()
             end
         end
     else
-        -- Additive path: only apply the diff. New + changed slots get a
-        -- fresh TryOn (which replaces any prior TryOn on the same slot).
-        -- Camera is untouched.
         for slotId, entry in pairs(previewSlots) do
             if last[slotId] ~= entry then
                 if IsEnchantSlot(slotId) then
-                    -- skip; no doll render
+                    -- enchant illusion -- no doll render
                 elseif entry == "HIDE" then
                     pcall(function() ui.doll:UndressSlot(slotId) end)
                 else
@@ -180,7 +159,6 @@ function ui.RefreshDoll()
         end
     end
 
-    -- Snapshot for next call's diff.
     ui.lastPreviewSlots = {}
     for k, v in pairs(previewSlots) do ui.lastPreviewSlots[k] = v end
 end

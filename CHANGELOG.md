@@ -1,5 +1,29 @@
 # Wardrobe — changelog
 
+## [1.25] - 2026-05-24
+
+### Changed
+- **Doll camera snapback on un-stage is now documented as a known
+  3.3.5a client limitation rather than fought.** When the user
+  right-clicks a slot tab to clear a staged preview (or un-hides a
+  HIDE'd slot), `RefreshDoll` calls `SetUnit("player")` so the model
+  re-renders the player's actual gear including server-side
+  transmogs. In WoW 3.3.5a, reassigning a `DressUpModel`'s unit
+  triggers an asynchronous M2 model reload and the client
+  reinitialises the camera (facing + position) as part of it -- and
+  this client version exposes no model-loaded callback to restore
+  the camera afterwards. v1.25 first tried `Undress()`/`Dress()`
+  (same rebuild, same snap), then a multi-frame `OnUpdate` poll to
+  re-assert the saved camera (won the race only intermittently and
+  flickered). Net: we accept the snap on the reset path and keep
+  the v1.24 additive path so the common case -- clicking new items
+  to add or replace previews -- still leaves the camera alone.
+
+### Removed
+- Now-dead `ui.dollCam` tracking and camera re-assert logic in
+  `UI_Main.lua` (the rotate/pan/wheel handlers no longer cache
+  facing/position, since nothing reads it back).
+
 ## [1.24] - 2026-05-23
 
 Player feedback round one — four fixes from in-game reports.
